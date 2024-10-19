@@ -5,7 +5,7 @@ const apiLocalUrl = "http://localhost:5000/";
 const apiLiveUrl = "https://mobirehab.onrender.com/";
 
 const api = axios.create({
-  baseURL: `${apiLocalUrl}api/v1/`,
+  baseURL: `${apiLiveUrl}api/v1/`,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

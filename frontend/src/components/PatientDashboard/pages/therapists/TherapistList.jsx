@@ -122,7 +122,7 @@ const TherapistList = () => {
           </div>
         </div>
         <AnimatePresence>
-          {filteredTherapists.length > 0 ? (
+          {filteredTherapists.length > 0 || data?.data?.length > 0 ? (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
               initial={{ opacity: 0 }}
