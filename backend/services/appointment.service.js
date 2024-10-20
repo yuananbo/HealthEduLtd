@@ -135,7 +135,9 @@ class AppointmentService {
 
   // Fetch appointment by ID
   static async getAppointmentById(appointmentId) {
-    const appointment = await Appointment.findById(appointmentId);
+    const appointment = await Appointment.findById(appointmentId).populate(
+      "sessionNotes"
+    );
 
     if (!appointment) {
       throw new NotFoundError("Appointment not found");
@@ -199,7 +201,7 @@ class AppointmentService {
       "Pending",
       "Accepted",
       "Declined",
-      "Done",
+      "Completed",
       "Cancelled",
     ];
     if (!validStatuses.includes(status)) {
@@ -304,6 +306,8 @@ class AppointmentService {
 
   // Add appointment notes during an appointment. This function is to allow therapist to add notes during an appointment with a patient.
   static async addAppointmentNotes(appointmentId, notes) {
+    // console.log("notes", notes);
+
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       throw new NotFoundError("Appointment not found");

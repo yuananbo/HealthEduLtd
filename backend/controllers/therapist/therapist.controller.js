@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import generateToken from "../../utils/generateToken.js";
 import Therapist from "../../models/therapist.model.js";
 import { uploadFilesToCloudinary } from "../../utils/cloudinary.js";
@@ -309,8 +308,8 @@ export const updateTherapistProfile = asyncHandler(async (req, res) => {
 });
 
 export const getTherapistStatistics = asyncHandler(async (req, res) => {
-  console.log("getTherapistStatistics function called");
-  console.log("Request user:", req.user);
+  // console.log("getTherapistStatistics function called");
+  // console.log("Request user:", req.user);
 
   try {
     const therapistId = req.user._id;
@@ -338,17 +337,33 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "Therapist not found" });
     }
 
-    // console.log("Fetching statistics for therapist:", therapist._id);
-
-    const totalPatients = await Patient.countDocuments({
+    // Calculate total patients for the therapist using the appointments collection
+    const totalPatients = await Appointment.distinct("patient", {
       therapist: therapistId,
-    });
+    }).countDocuments();
+
     const totalAppointments = await Appointment.countDocuments({
       therapist: therapistId,
     });
-
+    // Calculate total income for the therapist using the payments collection and allocate 65% to the therapist and 35% to the platform.
+    //The calculation is done using the appointment id to get the total amount paid for the appointment and then summing up the total amount paid for all appointments.
+    //Making sure the payment is successfull and the appointment is associated with the therapist.
     const totalIncome = await Payment.aggregate([
-      { $match: { therapist: new mongoose.Types.ObjectId(therapistId) } },
+      {
+        $lookup: {
+          from: "appointments",
+          localField: "appointment",
+          foreignField: "_id",
+          as: "appointment",
+        },
+      },
+      { $unwind: "$appointment" },
+      {
+        $match: {
+          "appointment.therapist": new mongoose.Types.ObjectId(therapistId),
+          status: "success",
+        },
+      },
       {
         $group: {
           _id: null,
@@ -376,7 +391,7 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
       overallRating,
     };
 
-    console.log("Statistics calculated:", statistics);
+    // console.log("Statistics calculated:", statistics);
 
     res.json(statistics);
   } catch (error) {

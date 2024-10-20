@@ -14,12 +14,17 @@ import useAppointmentDetails from "../../../../hooks/useAppointmentDetails";
 import toast from "react-hot-toast";
 import Loading from "../../../utilities/Loading";
 import Button from "../../../common/Button";
+import api from "../../../../utils/api";
+import Input from "../../../common/forms/Input";
 
 const AppointmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
+  const [noteDetails, setNoteDetails] = useState("");
+  const [notes, setNotes] = useState([]);
   const [showDeclineWarning, setShowDeclineWarning] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const {
     appointment,
@@ -46,6 +51,12 @@ const AppointmentDetails = () => {
     }
   }, [appointment, fetchPatientDetails]);
 
+  useEffect(() => {
+    if (appointment?.data?.sessionNotes) {
+      setNotes(appointment.data.sessionNotes);
+    }
+  }, [appointment]);
+
   if (appointmentLoading || patientLoading) {
     return <Loading />;
   }
@@ -71,7 +82,7 @@ const AppointmentDetails = () => {
         await updateStatus(appointment?.data?._id, newStatus);
         setShowDeclineWarning(false);
         window.location.reload();
-        toast.success(`Appointment ${newStatus.toLowerCase()}successfully`);
+        toast.success(`Appointment ${newStatus.toLowerCase()} successfully`);
       } catch (err) {
         toast.error(
           "Failed to mark appointment as complete. Please try again."
@@ -81,9 +92,28 @@ const AppointmentDetails = () => {
     }
   };
 
-  const handleAddNote = () => {
-    // Implement note addition logic here
-    setNote("");
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    if (!reason || !noteDetails) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await api.post(`/therapist/appointments/${id}/notes`, {
+        reason: reason,
+        note: noteDetails,
+      });
+      setNotes([...notes, response.data.data]);
+      setReason("");
+      setNoteDetails("");
+      toast.success("Note added successfully");
+      setLoading(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error adding note");
+      setLoading(false);
+    }
   };
 
   const handleMarkComplete = async () => {
@@ -266,28 +296,54 @@ const AppointmentDetails = () => {
                 <p className="mt-1 max-w-2xl text-sm text-gray-500">Optional</p>
               </div>
               <div className="px-4 py-5 sm:p-6">
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                <Input
+                  labelText={"Appointment Feedback Title"}
+                  handleChange={(e) => setReason(e.target.value)}
+                  value={reason}
+                  placeholder={"e.g Follow up"}
+                  labelFor={"reason"}
+                  id={"reason"}
+                  type={"text"}
+                  name={"reason"}
+                />
+                <Input
+                  value={noteDetails}
+                  onChange={(e) => setNoteDetails(e.target.value)}
+                  labelText={"Appointment Feedback Description"}
+                  labelFor={"noteDetails"}
+                  id={"noteDetails"}
+                  name={"noteDetails"}
+                  type={"textarea"}
+                  component="textarea"
                   rows={4}
-                  className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"
-                  placeholder="Add a note about this appointment (optional)"
                 />
                 <div className="mt-4 flex justify-end">
-                  {/* <button
-                    onClick={handleAddNote}
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out"
-                  >
-                    Add Note
-                  </button> */}
                   <Button
                     onClick={handleAddNote}
-                    // disabled={updateLoading}
-                    label={"Add Note"}
+                    label={loading ? "Adding..." : "Add Note"}
                     variant="outlined"
+                    disabled={loading}
                   />
                 </div>
               </div>
+            </div>
+            <div className="mt-8">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Notes
+              </h3>
+              <ul className="mt-4">
+                {notes.map((note, index) => (
+                  <li
+                    key={index}
+                    className="bg-white shadow overflow-hidden sm:rounded-lg mb-4 p-4"
+                  >
+                    <h4 className="text-md font-medium text-gray-900">
+                      {note.reason}
+                    </h4>
+                    <p className="mt-1 text-sm text-gray-500">{note.note}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="mt-8 flex justify-end">
               <Button

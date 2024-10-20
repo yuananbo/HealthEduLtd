@@ -133,11 +133,11 @@ export const cancelAppointment = asyncHandler(async (req, res) => {
 
 export const addAppointmentNotes = asyncHandler(async (req, res) => {
   try {
-    const { notes } = req.body;
+    const { reason, note } = req.body;
     const appointmentId = req.params.id;
     const appointment = await AppointmentService.addAppointmentNotes(
       appointmentId,
-      notes
+      { reason, note }
     );
     res.status(200).json({
       success: true,
