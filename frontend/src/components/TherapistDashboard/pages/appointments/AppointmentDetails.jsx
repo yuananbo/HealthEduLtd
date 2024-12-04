@@ -308,7 +308,7 @@ const AppointmentDetails = () => {
                 />
                 <Input
                   value={noteDetails}
-                  onChange={(e) => setNoteDetails(e.target.value)}
+                  handleChange={(e) => setNoteDetails(e.target.value)}
                   labelText={"Appointment Feedback Description"}
                   labelFor={"noteDetails"}
                   id={"noteDetails"}

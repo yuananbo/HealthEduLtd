@@ -86,7 +86,11 @@ export const appointmentConfirmationTemplate = ({ appointment }) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1>Appointment Confirmation</h1>
+              <h1>Appointment Confirmation</h1>      if (therapist.active === false) {
+        throw new Error(
+          "This therapist haven't verified their email yet. Account can't be approved"
+        );
+      }
             </div>
             <div class="content">
               <p>Hello ${appointment.name},</p>
