@@ -153,6 +153,5 @@ Merge flow: `feature`/`bugfix` → `develop` → `release` → `main`; `hotfix` 
 ---
 
 *Prepared for the MOBIREHAB Founding Team · **HealthLearn Builders***
-# HealthEduLtd
-# HealthEduLtd
+
 # HealthEduLtd
