@@ -2,7 +2,17 @@
 
 **Rehabilitation at Your Home** — A healthcare platform for appointment booking, home physiotherapy, virtual exercises, and community health empowerment.
 
+**Focus:** This repository focuses on the **Appointment Booking** flow — patients book therapists for home Physiotherapy and virtual exercises.
+
 *Built by **HealthLearn Builders***
+
+---
+
+## User Flow Diagram
+
+See the **MOBIREHAB User Flow diagram** for detailed user journeys and wireframe structure:
+
+**[MOBIREHAB User Flow (Google Doc)](https://docs.google.com/document/d/1W1iB2_9oYnpqVV98SxbX3E57nQvPiMYk/edit?usp=sharing&ouid=106856486714273563147&rtpof=true&sd=true)**
 
 ---
 
@@ -14,16 +24,15 @@ MOBIREHAB is part of the **HealthEdu** initiative. It serves as a **one-stop cen
 - **Community health workers** — Smoothen access to healthcare in the community and connect doctors with patients.
 - **Patients** — Book home physiotherapy and virtual exercise sessions, access assistive devices, and educational content.
 
-This repository focuses on the **Appointment Booking App**: patients book therapists for **home Physiotherapy** and **virtual exercises**. The platform supports both **web** and **mobile** users.
+**This repo focuses on the Appointment Booking app**: patients book therapists for **home Physiotherapy** and **virtual exercises**. The platform supports both **web** and **mobile** users.
 
-### Core Services
+### Core Service (Focus: Appointment)
 
 | Service | Description |
 |--------|-------------|
-| **Home Care Rehab** | Book therapists (Physiotherapy, OT, P&O, Nutrition, Mental Health, Family Medicine) for in-home or virtual sessions. |
-| **Assistive Devices** | Browse, request assessment, and procure mobility aids, orthotics, prosthetics, and daily living aids. |
-| **Education** | NCD management, exercises, nutrition, disability prevention — read/watch content, save, share with caregivers. |
-| **CPD / Upskilling** | Continuous Professional Development courses for working professionals: learning materials → test (80% pass) → paid certificate with credits (accredited). |
+| **Appointment Booking / Home Care Rehab** | Book therapists (Physiotherapy, OT, P&O, Nutrition, Mental Health, Family Medicine) for in-home or virtual sessions. Select therapy type → therapist → date/time → address & notes → payment → confirmation. |
+
+*Other MOBIREHAB services (Assistive Devices, Education, CPD) are documented in the [User Flow diagram](https://docs.google.com/document/d/1W1iB2_9oYnpqVV98SxbX3E57nQvPiMYk/edit?usp=sharing&ouid=106856486714273563147&rtpof=true&sd=true); this codebase prioritizes appointment booking.*
 
 ### User Roles
 
@@ -33,14 +42,14 @@ This repository focuses on the **Appointment Booking App**: patients book therap
 
 ---
 
-## Key User Flows (Summary)
+## Key User Flows (Appointment Focus)
 
-1. **Patient** — Landing → Login/Signup → Dashboard → Select Service (Book / Devices / Education) → Payment (if applicable) → Confirmation.
-2. **Booking** — Service → Therapy Type → Therapist → Date/Time → Address & Notes → Payment → Confirmation.
-3. **Assistive Devices** — Category → Device Details → Assessment/Purchase → Payment → Delivery/Fitting.
-4. **Education** — Topic → Content → Read/Watch → Save/Share.
-5. **Therapist** — Login → Dashboard → Appointments → Patient Profile → Session Notes → Complete.
-6. **Admin** — Login → Dashboard → Manage Users, Therapists, Bookings, Devices, Content.
+1. **Patient (Appointment)** — Landing → Login/Signup → Patient Dashboard → **Book Appointment** → Choose Therapy Type → Select Therapist → Date & Time → Address & Notes → Payment → Confirmation.
+2. **Home Care & Therapy Booking** — Book Appointment → Therapy Type (Physio, OT, P&O, Nutrition, Mental Health, Family Medicine) → Therapist → Date/Time → Home Address & Notes → Payment → Booking Confirmation → Therapist Assigned.
+3. **Therapist** — Login → Therapist Dashboard → View/Accept/Reject Appointments → Patient Profile → Session Notes → Mark Session Complete.
+4. **Admin / Care Coordinator** — Login → Admin Dashboard → Manage Users, Therapists, Bookings; assign coordinators; monitor reports.
+
+For full flows (including Assistive Devices, Education), see the [MOBIREHAB User Flow diagram](https://docs.google.com/document/d/1W1iB2_9oYnpqVV98SxbX3E57nQvPiMYk/edit?usp=sharing&ouid=106856486714273563147&rtpof=true&sd=true).
 
 ---
 
@@ -133,7 +142,7 @@ Merge flow: `feature`/`bugfix` → `develop` → `release` → `main`; `hotfix` 
 
 ## Project Documentation
 
-- **MOBIREHAB – User Flow Diagrams & UI/UX Wireframe Structure** (internal): user flows and screen-by-screen wireframe structure for Patient, Therapist, Admin, Booking, Devices, and Education.
+- **[MOBIREHAB User Flow diagram](https://docs.google.com/document/d/1W1iB2_9oYnpqVV98SxbX3E57nQvPiMYk/edit?usp=sharing&ouid=106856486714273563147&rtpof=true&sd=true)** — User flow diagrams and UI/UX wireframe structure (Patient, Therapist, Admin; appointment focus plus Devices, Education).
 - **Next steps**: Figma wireframes, clinician validation, MVP scope lock, then development.
 
 ---
