@@ -1,0 +1,37 @@
+/**
+ * Dashboard Page Styles
+ */
+
+.dashboard h1 {
+  margin-bottom: 0.5rem;
+}
+
+.welcome-message {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.dashboard-card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card h3 {
+  color: #333;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #1976d2;
+}
+
+.dashboard-card .placeholder {
+  color: #888;
+  font-style: italic;
+}
