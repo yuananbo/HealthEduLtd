@@ -5,7 +5,17 @@ import Admin from "../models/admin.model.js";
 
 const validateToken = async (req, res, next) => {
   try {
-    const token = req.cookies.jwt;
+    // Try to get token from cookie first, then from Authorization header
+    let token = req.cookies.jwt;
+
+    // If no cookie, check Authorization header
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
     if (!token)
       return res
         .status(401)

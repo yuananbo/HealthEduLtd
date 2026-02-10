@@ -1,9 +1,9 @@
 import jwt from "jsonwebtoken";
 
 const generateToken = (userId, userType, res) => {
-  const expiresIn = userType === "therapist" || "admin" ? "1d" : "5d";
+  const expiresIn = userType === "therapist" || userType === "admin" ? "1d" : "5d";
   const maxAge =
-    userType === "therapist"
+    userType === "therapist" || userType === "admin"
       ? 1 * 24 * 60 * 60 * 1000
       : 5 * 24 * 60 * 60 * 1000;
 
@@ -15,7 +15,7 @@ const generateToken = (userId, userType, res) => {
     maxAge,
     expires: new Date(Date.now() + maxAge),
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     secure: process.env.NODE_ENV !== "development",
   });
   return token;
