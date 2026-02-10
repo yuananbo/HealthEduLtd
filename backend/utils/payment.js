@@ -2,10 +2,20 @@ import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
 dotenv.config();
 
-const flw = new Flutterwave(
-  process.env.FLW_PUBLIC_KEY,
-  process.env.FLW_SECRET_KEY
-);
+// Initialize Flutterwave with fallback for missing keys
+let flw = null;
+try {
+  if (process.env.FLW_PUBLIC_KEY && process.env.FLW_SECRET_KEY) {
+    flw = new Flutterwave(
+      process.env.FLW_PUBLIC_KEY,
+      process.env.FLW_SECRET_KEY
+    );
+  } else {
+    console.warn("⚠️  Flutterwave API keys not configured. Payment features will be disabled.");
+  }
+} catch (error) {
+  console.warn("⚠️  Failed to initialize Flutterwave:", error.message);
+}
 async function processPayment({
   phoneNumber,
   amount,
@@ -31,6 +41,10 @@ async function processPayment({
     email: email,
     order_id: appointmentId.toString(),
   };
+
+  if (!flw) {
+    throw new Error("Payment service not configured. Please set FLW_PUBLIC_KEY and FLW_SECRET_KEY in .env file");
+  }
 
   try {
     const response = await flw.MobileMoney.rwanda(payload);

@@ -4,13 +4,27 @@ import Payment from "../models/payment.model.js";
 import Appointment from "../models/appointment.model.js";
 dotenv.config();
 
-const flw = new Flutterwave(
-  process.env.FLW_PUBLIC_KEY,
-  process.env.FLW_SECRET_KEY
-);
+// Initialize Flutterwave with fallback for missing keys
+let flw = null;
+try {
+  if (process.env.FLW_PUBLIC_KEY && process.env.FLW_SECRET_KEY) {
+    flw = new Flutterwave(
+      process.env.FLW_PUBLIC_KEY,
+      process.env.FLW_SECRET_KEY
+    );
+  } else {
+    console.warn("⚠️  Flutterwave API keys not configured in webhook controller.");
+  }
+} catch (error) {
+  console.warn("⚠️  Failed to initialize Flutterwave in webhook:", error.message);
+}
 
 export const handleFlutterwaveWebhook = async (req, res) => {
   console.log("Received webhook call:", req.body);
+
+  if (!flw) {
+    return res.status(503).json({ error: "Payment service not configured" });
+  }
 
   const secretHash = process.env.FLW_SECRET_HASH;
   const signature = req.headers["verif-hash"];
@@ -78,6 +92,10 @@ export const handleFlutterwaveRedirect = async (req, res) => {
   const { resp } = req.query;
 
   console.log("Redirect query parameters:", req.query);
+
+  if (!flw) {
+    return res.status(503).json({ error: "Payment service not configured" });
+  }
 
   try {
     const response = JSON.parse(decodeURIComponent(resp));

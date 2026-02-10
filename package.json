@@ -6,7 +6,9 @@
   "scripts": {
     "server": "nodemon backend/server.js",
     "start": "node backend/server.js",
-    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
+    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend",
+    "db:init": "node backend/scripts/initDB.js",
+    "db:setup": "brew services start mongodb/brew/mongodb-community@8.0 && node backend/scripts/initDB.js"
   },
   "type": "module",
   "keywords": [],

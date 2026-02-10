@@ -1,5 +1,12 @@
 import { config } from "dotenv";
-config();
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __currentDir = dirname(__filename);
+
+// Load .env from backend directory
+config({ path: path.join(__currentDir, ".env") });
 import path from "path";
 import express from "express";
 import cors from "cors";
