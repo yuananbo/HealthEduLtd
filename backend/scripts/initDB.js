@@ -26,12 +26,12 @@ const initDatabase = async () => {
 
     await mongoose.connect(process.env.DBCONNECTION);
 
-    console.log("✅ Connected to MongoDB successfully!");
+    console.log(" Connected to MongoDB successfully!");
 
     // Get database instance
     const db = mongoose.connection.db;
 
-    console.log("\n📊 Database Information:");
+    console.log("\n Database Information:");
     console.log(`Database Name: ${db.databaseName}`);
 
     // List all collections
@@ -122,7 +122,7 @@ const initDatabase = async () => {
 
     process.exit(0);
   } catch (error) {
-    console.error("\n❌ Error initializing database:", error.message);
+    console.error("\n Error initializing database:", error.message);
     console.error(error);
     process.exit(1);
   }
