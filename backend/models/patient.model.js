@@ -93,6 +93,18 @@ const patientSchema = new mongoose.Schema(
     emergencyContact: {
       type: String,
     },
+    height: {
+      type: Number,
+      default: null,
+    },
+    weight: {
+      type: Number,
+      default: null,
+    },
+    bloodType: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

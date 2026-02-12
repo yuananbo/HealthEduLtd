@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HealthTip from "./HealthTip";
+import ChooseServiceCards from "./ChooseServiceCards";
 import { healthTips, mockPatient } from "./mockData";
 import PatientProfile from "./PatientProfile";
 import UpcomingAppointments from "./UpcomingAppointments";
@@ -51,6 +52,8 @@ const Dashboard = ({ darkMode }) => {
           </p>
         </motion.div>
 
+        <ChooseServiceCards darkMode={darkMode} />
+
         <div className="mb-12">
           <AnimatePresence mode="wait">
             <HealthTip
@@ -61,7 +64,7 @@ const Dashboard = ({ darkMode }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <PatientProfile patient={mockPatient} darkMode={darkMode} />
+          <PatientProfile darkMode={darkMode} />
           <UpcomingAppointments darkMode={darkMode} />
           <AppointmentHistory
             appointments={mockPatient.appointmentHistory}

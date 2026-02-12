@@ -179,6 +179,9 @@ export const editPatientProfile = async (req, res) => {
       address,
       gender,
       dateOfBirth,
+      height,
+      weight,
+      bloodType,
     } = req.body;
 
     // Update the patient's profile information (except password)
@@ -191,6 +194,13 @@ export const editPatientProfile = async (req, res) => {
       guardianPhoneNumber || patient.guardianPhoneNumber;
 
     patient.dateOfBirth = dateOfBirth || patient.dateOfBirth;
+    const numHeight = Number(height);
+    if (height !== undefined && height !== "" && !isNaN(numHeight))
+      patient.height = numHeight;
+    const numWeight = Number(weight);
+    if (weight !== undefined && weight !== "" && !isNaN(numWeight))
+      patient.weight = numWeight;
+    if (bloodType !== undefined) patient.bloodType = bloodType || null;
 
     // Update profile picture if provided
     if (req.files && req.files.profilePicture) {

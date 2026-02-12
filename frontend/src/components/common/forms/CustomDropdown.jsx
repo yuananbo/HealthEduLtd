@@ -10,6 +10,7 @@ export default function CustomDropdown({
   name,
   isRequired = false,
   options,
+  placeholder,
   customClass = "",
 }) {
   return (
@@ -22,12 +23,15 @@ export default function CustomDropdown({
       </label>
       <select
         onChange={handleChange}
-        value={value}
+        value={value ?? ""}
         id={id}
         name={name}
         required={isRequired}
         className={`${fixedInputClass} ${customClass}`}
       >
+        {placeholder != null && (
+          <option value="">{placeholder}</option>
+        )}
         {options.map((option, index) => (
           <option key={index} value={option}>
             {option}

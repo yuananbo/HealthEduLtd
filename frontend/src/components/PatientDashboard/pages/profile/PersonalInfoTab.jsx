@@ -242,6 +242,39 @@ const PersonalInfoTab = () => {
             type="date"
             icon={<FaCalendarAlt className="text-greenPrimary text-xl" />}
           />
+          <Input
+            handleChange={handleChange}
+            value={patient?.height ?? ""}
+            labelText="Height (cm)"
+            labelFor="height"
+            id="height"
+            name="height"
+            type="number"
+            placeholder="e.g. 165"
+            icon={<FaUser className="text-greenPrimary text-xl" />}
+          />
+          <Input
+            handleChange={handleChange}
+            value={patient?.weight ?? ""}
+            labelText="Weight (kg)"
+            labelFor="weight"
+            id="weight"
+            name="weight"
+            type="number"
+            placeholder="e.g. 60"
+            icon={<FaUser className="text-greenPrimary text-xl" />}
+          />
+          <CustomDropdown
+            handleChange={handleChange}
+            value={patient?.bloodType ?? ""}
+            labelText="Blood Type"
+            labelFor="bloodType"
+            id="bloodType"
+            name="bloodType"
+            isRequired={false}
+            options={["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]}
+            placeholder="Select blood type"
+          />
           <CustomDropdown
             handleChange={handleChange}
             value={patient?.gender}
