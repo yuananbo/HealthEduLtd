@@ -9,13 +9,30 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Keep React state and localStorage in sync.
+  const updateCurrentUser = (user) => {
+    setCurrentUser(user);
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       const user = await isAuthenticated();
       if (user) {
         setCurrentUser(user);
       } else {
-        navigate("/welcome", { replace: true });
+        const currentPath = window.location.pathname;
+        if (
+          !currentPath.includes("/welcome") &&
+          !currentPath.includes("/signup") &&
+          !currentPath.includes("/login")
+        ) {
+          navigate("/welcome", { replace: true });
+        }
       }
       setLoading(false);
     };
@@ -24,7 +41,9 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ currentUser, setCurrentUser, loading }}>
+    <UserContext.Provider
+      value={{ currentUser, setCurrentUser: updateCurrentUser, loading }}
+    >
       {!loading && children}
     </UserContext.Provider>
   );
