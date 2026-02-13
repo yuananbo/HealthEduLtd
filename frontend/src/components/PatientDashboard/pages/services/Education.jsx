@@ -46,27 +46,13 @@ const TOPICS = [
   },
 ];
 
-const API_DRIVEN_TOPICS = new Set(["nutrition", "ncd-management"]);
+const API_DRIVEN_TOPICS = new Set([
+  "nutrition",
+  "ncd-management",
+  "exercises",
+]);
 
 const EDUCATION_CONTENT = {
-  exercises: [
-    {
-      id: "ex-1",
-      type: "video",
-      title: "Gentle Home Mobility Routine",
-      summary: "A beginner-friendly routine for daily movement.",
-      duration: "8 min watch",
-      body: "Start with neck and shoulder mobility, then progress to seated leg raises and standing balance support drills near a stable surface.",
-    },
-    {
-      id: "ex-2",
-      type: "article",
-      title: "How to Progress Exercise Safely",
-      summary: "Rules for increasing intensity without overexertion.",
-      duration: "5 min read",
-      body: "Increase only one variable at a time: repetitions, duration, or resistance. Stop if you experience sharp pain, dizziness, or unusual shortness of breath.",
-    },
-  ],
   "disability-prevention": [
     {
       id: "dp-1",
