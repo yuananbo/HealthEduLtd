@@ -46,25 +46,9 @@ const TOPICS = [
   },
 ];
 
+const API_DRIVEN_TOPICS = new Set(["nutrition", "ncd-management"]);
+
 const EDUCATION_CONTENT = {
-  "ncd-management": [
-    {
-      id: "ncd-1",
-      type: "article",
-      title: "Daily Blood Pressure Self-Check",
-      summary: "How to measure blood pressure correctly and track trends.",
-      duration: "6 min read",
-      body: "Measure at the same time each day, sit for 5 minutes before checking, and log results. Contact your care team if repeated readings stay above your target range.",
-    },
-    {
-      id: "ncd-2",
-      type: "video",
-      title: "Medication Adherence Basics",
-      summary: "Simple strategies to avoid missed doses.",
-      duration: "4 min watch",
-      body: "Use pill organizers, set reminders, and align medication schedules with existing habits like meals or bedtime routines.",
-    },
-  ],
   exercises: [
     {
       id: "ex-1",
@@ -107,37 +91,39 @@ const Education = () => {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [selectedContentId, setSelectedContentId] = useState(null);
   const [contentTypeFilter, setContentTypeFilter] = useState("all");
-  const [nutritionContent, setNutritionContent] = useState([]);
-  const [nutritionLoading, setNutritionLoading] = useState(false);
-  const [nutritionError, setNutritionError] = useState("");
+  const [dynamicContent, setDynamicContent] = useState([]);
+  const [dynamicLoading, setDynamicLoading] = useState(false);
+  const [dynamicError, setDynamicError] = useState("");
 
   const selectedTopicData = TOPICS.find((topic) => topic.id === selectedTopic);
 
   useEffect(() => {
-    const fetchNutritionContent = async () => {
+    const fetchDynamicContent = async () => {
       try {
-        setNutritionLoading(true);
-        setNutritionError("");
-        const response = await api.get("/patient/education/nutrition");
-        setNutritionContent(response?.data?.data || []);
+        setDynamicLoading(true);
+        setDynamicError("");
+        const response = await api.get("/patient/education/content", {
+          params: { topic: selectedTopic },
+        });
+        setDynamicContent(response?.data?.data || []);
       } catch (error) {
-        console.error("Failed to fetch nutrition education content:", error);
-        setNutritionError("Could not load Nutrition content right now.");
+        console.error("Failed to fetch education content:", error);
+        setDynamicError(`Could not load ${selectedTopicData?.title || "topic"} content right now.`);
       } finally {
-        setNutritionLoading(false);
+        setDynamicLoading(false);
       }
     };
 
-    if (selectedTopic === "nutrition") {
-      fetchNutritionContent();
+    if (selectedTopic && API_DRIVEN_TOPICS.has(selectedTopic)) {
+      fetchDynamicContent();
     }
-  }, [selectedTopic]);
+  }, [selectedTopic, selectedTopicData?.title]);
 
   const topicContent = useMemo(() => {
     if (!selectedTopic) return [];
-    if (selectedTopic === "nutrition") return nutritionContent;
+    if (API_DRIVEN_TOPICS.has(selectedTopic)) return dynamicContent;
     return EDUCATION_CONTENT[selectedTopic] || [];
-  }, [selectedTopic, nutritionContent]);
+  }, [selectedTopic, dynamicContent]);
 
   const filteredContent = useMemo(() => {
     if (contentTypeFilter === "all") return topicContent;
@@ -243,15 +229,15 @@ const Education = () => {
               ))}
             </div>
 
-            {selectedTopic === "nutrition" && nutritionLoading && (
-              <p className="text-sm text-gray-600">Loading nutrition content...</p>
+            {API_DRIVEN_TOPICS.has(selectedTopic) && dynamicLoading && (
+              <p className="text-sm text-gray-600">Loading content...</p>
             )}
 
-            {selectedTopic === "nutrition" && nutritionError && (
-              <p className="text-sm text-red-600">{nutritionError}</p>
+            {API_DRIVEN_TOPICS.has(selectedTopic) && dynamicError && (
+              <p className="text-sm text-red-600">{dynamicError}</p>
             )}
 
-            {!nutritionLoading && !nutritionError && (
+            {!dynamicLoading && !dynamicError && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredContent.map((content) => (
                   <button
@@ -275,8 +261,8 @@ const Education = () => {
               </div>
             )}
 
-            {!nutritionLoading &&
-              !nutritionError &&
+            {!dynamicLoading &&
+              !dynamicError &&
               filteredContent.length === 0 && (
                 <p className="text-sm text-gray-600">
                   No content available for this topic yet.
