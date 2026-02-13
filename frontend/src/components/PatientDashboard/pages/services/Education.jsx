@@ -50,27 +50,10 @@ const API_DRIVEN_TOPICS = new Set([
   "nutrition",
   "ncd-management",
   "exercises",
+  "disability-prevention",
 ]);
 
 const EDUCATION_CONTENT = {
-  "disability-prevention": [
-    {
-      id: "dp-1",
-      type: "article",
-      title: "Fall Prevention Checklist",
-      summary: "Home adjustments that reduce fall risk.",
-      duration: "6 min read",
-      body: "Remove loose rugs, improve lighting in hallways, install grab bars in bathrooms, and wear non-slip footwear.",
-    },
-    {
-      id: "dp-2",
-      type: "video",
-      title: "Warning Signs You Should Not Ignore",
-      summary: "Symptoms that require early professional evaluation.",
-      duration: "5 min watch",
-      body: "Seek early review for persistent numbness, progressive weakness, worsening balance, or repeated near-falls.",
-    },
-  ],
 };
 
 const Education = () => {

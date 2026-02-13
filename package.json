@@ -11,7 +11,8 @@
     "db:setup": "brew services start mongodb/brew/mongodb-community@8.0 && node backend/scripts/initDB.js",
     "education:seed:nutrition": "node backend/scripts/seedNutritionEducation.js",
     "education:seed:ncd": "node backend/scripts/seedNcdManagementEducation.js",
-    "education:seed:exercises": "node backend/scripts/seedExercisesEducation.js"
+    "education:seed:exercises": "node backend/scripts/seedExercisesEducation.js",
+    "education:seed:disability": "node backend/scripts/seedDisabilityPreventionEducation.js"
   },
   "type": "module",
   "keywords": [],
