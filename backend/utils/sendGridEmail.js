@@ -1,8 +1,20 @@
 import { config } from "dotenv";
-config();
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load backend/.env regardless of process working directory.
+config({ path: path.resolve(__dirname, "../.env") });
 import sgMail from "@sendgrid/mail";
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const sendGridApiKey = process.env.SENDGRID_API_KEY;
+if (sendGridApiKey) {
+  sgMail.setApiKey(sendGridApiKey);
+} else {
+  console.warn("SENDGRID_API_KEY is missing. Email delivery is disabled.");
+}
 
 // const sendEmail = async ({
 //   receipientEmail,
@@ -468,6 +480,9 @@ const sendEmail = async ({
   };
 
   try {
+    if (!sendGridApiKey) {
+      throw new Error("SENDGRID_API_KEY is not configured");
+    }
     console.log("Sending email with the following details:", msg);
     await sgMail.send(msg);
   } catch (error) {
@@ -497,6 +512,9 @@ const sendPasswordResetEmail = async (email, resetLink) => {
   };
 
   try {
+    if (!sendGridApiKey) {
+      throw new Error("SENDGRID_API_KEY is not configured");
+    }
     await sgMail.send(msg);
   } catch (error) {
     console.error("Error sending email:", error);

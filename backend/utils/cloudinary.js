@@ -1,12 +1,29 @@
 import { config } from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
+import path from "path";
+import { fileURLToPath } from "url";
 
-config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load backend/.env regardless of where the process is started.
+config({ path: path.resolve(__dirname, "../.env") });
+
+const cloudName = process.env.CLOUD_NAME;
+const apiKey = process.env.CLOUD_API_KEY || process.env.CLOUDINARY_API_KEY;
+const apiSecret =
+  process.env.CLOUD_API_SECRET || process.env.CLOUDINARY_API_SECRET;
+
+if (!cloudName || !apiKey || !apiSecret) {
+  console.warn(
+    "Cloudinary credentials are missing. Set CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET in backend/.env"
+  );
+}
 
 cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_API_KEY,
-  api_secret: process.env.CLOUD_API_SECRET,
+  cloud_name: cloudName,
+  api_key: apiKey,
+  api_secret: apiSecret,
 });
 
 const uploadFilesToCloudinary = async (files) => {

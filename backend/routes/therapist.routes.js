@@ -1,5 +1,6 @@
 import express from "express";
 import validateToken from "../middleware/validateToken.js";
+import { checkPasswordStrength } from "../middleware/checkPasswordStrength.js";
 import {
   getPatientDetails,
   getTherapistStatistics,
@@ -55,6 +56,7 @@ router.post(
     { name: "cv" },
     { name: "licenseDocument" },
   ]),
+  checkPasswordStrength,
   signupTherapist
 );
 

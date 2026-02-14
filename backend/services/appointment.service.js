@@ -126,6 +126,7 @@ class AppointmentService {
 
     const skip = (page - 1) * limit;
     const appointments = await Appointment.find({ therapist: therapistId })
+      .populate("patient", "firstName lastName")
       .limit(limit)
       .skip(skip);
     const total = await Appointment.countDocuments({ therapist: therapistId });
@@ -206,6 +207,14 @@ class AppointmentService {
     ];
     if (!validStatuses.includes(status)) {
       throw new Error("Invalid status");
+    }
+
+    if (status === "Completed" && appointment.status !== "Accepted") {
+      const transitionError = new Error(
+        "Only accepted appointments can be marked as completed"
+      );
+      transitionError.status = 400;
+      throw transitionError;
     }
 
     appointment.status = status;
