@@ -1,35 +1,8 @@
-import React, { useEffect } from "react";
-import usePatientDetails from "../../../../hooks/usePatientDetails";
+import React from "react";
 import { Link } from "react-router-dom";
 
-const AppointmentRow = ({ appointment, onViewDetails }) => {
-  const { loading, error, patient, fetchPatientDetails } = usePatientDetails();
-
-  useEffect(() => {
-    fetchPatientDetails(appointment.patient);
-  }, [appointment.patient, fetchPatientDetails]);
-
-  if (loading) {
-    return (
-      <tr>
-        <td colSpan="6" className="text-center py-4">
-          Loading patient details...
-        </td>
-      </tr>
-    );
-  }
-
-  if (error) {
-    return (
-      <tr>
-        <td colSpan="6" className="text-center py-4 text-red-500">
-          Error loading patient details
-        </td>
-      </tr>
-    );
-  }
-
-  const patientData = patient?.data;
+const AppointmentRow = ({ appointment }) => {
+  const patientData = appointment?.patient || {};
   const fullName = `${patientData?.firstName} ${patientData?.lastName}`.trim();
 
   return (
@@ -82,7 +55,7 @@ const AppointmentRow = ({ appointment, onViewDetails }) => {
   );
 };
 
-const AppointmentTable = ({ appointments, onViewDetails }) => {
+const AppointmentTable = ({ appointments }) => {
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <table className="min-w-full">

@@ -358,9 +358,10 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
     }
 
     // Calculate total patients for the therapist using the appointments collection
-    const totalPatients = await Appointment.distinct("patient", {
+    const uniquePatients = await Appointment.distinct("patient", {
       therapist: therapistId,
-    }).countDocuments();
+    });
+    const totalPatients = uniquePatients.length;
 
     const totalAppointments = await Appointment.countDocuments({
       therapist: therapistId,

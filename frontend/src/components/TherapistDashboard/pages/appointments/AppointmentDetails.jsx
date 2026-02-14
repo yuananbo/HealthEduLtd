@@ -23,6 +23,7 @@ const AppointmentDetails = () => {
   const [reason, setReason] = useState("");
   const [noteDetails, setNoteDetails] = useState("");
   const [notes, setNotes] = useState([]);
+  const [currentStatus, setCurrentStatus] = useState("");
   const [showDeclineWarning, setShowDeclineWarning] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +36,6 @@ const AppointmentDetails = () => {
   const {
     updateStatus,
     loading: updateLoading,
-    error: updateError,
   } = useUpdateAppointmentStatus();
 
   const {
@@ -54,6 +54,12 @@ const AppointmentDetails = () => {
   useEffect(() => {
     if (appointment?.data?.sessionNotes) {
       setNotes(appointment.data.sessionNotes);
+    }
+  }, [appointment]);
+
+  useEffect(() => {
+    if (appointment?.data?.status) {
+      setCurrentStatus(appointment.data.status);
     }
   }, [appointment]);
 
@@ -80,13 +86,14 @@ const AppointmentDetails = () => {
     } else {
       try {
         await updateStatus(appointment?.data?._id, newStatus);
+        setCurrentStatus(newStatus);
         setShowDeclineWarning(false);
-        window.location.reload();
         toast.success(`Appointment ${newStatus.toLowerCase()} successfully`);
       } catch (err) {
-        toast.error(
-          "Failed to mark appointment as complete. Please try again."
-        );
+        const message =
+          err.response?.data?.message ||
+          "Failed to update appointment status. Please try again.";
+        toast.error(message);
         console.error("Failed to update appointment status:", err);
       }
     }
@@ -119,8 +126,13 @@ const AppointmentDetails = () => {
   const handleMarkComplete = async () => {
     try {
       await updateStatus(appointment?.data?._id, "Completed");
-      window.location.reload(); // Refresh the page
+      setCurrentStatus("Completed");
+      toast.success("Appointment marked as complete");
     } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        "Failed to mark appointment as complete. Please try again.";
+      toast.error(message);
       console.error("Failed to mark appointment as complete:", err);
     }
   };
@@ -142,21 +154,21 @@ const AppointmentDetails = () => {
 
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-indigo-50">
-            <h2 className="text-3xl font-bold text-indigo-900">
-              Appointment Details
-            </h2>
+              <h2 className="text-3xl font-bold text-indigo-900">
+                Appointment Details
+              </h2>
             <span
               className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                appointment?.data.status === "Pending"
+                currentStatus === "Pending"
                   ? "bg-yellow-100 text-yellow-800"
-                  : appointment?.data.status === "Accepted"
+                  : currentStatus === "Accepted"
                   ? "bg-green-100 text-green-800"
-                  : appointment?.data.status === "Declined"
+                  : currentStatus === "Declined"
                   ? "bg-red-100 text-red-800"
                   : "bg-blue-100 text-blue-800"
               }`}
             >
-              {appointment?.data.status}
+              {currentStatus}
             </span>
           </div>
 
@@ -227,18 +239,18 @@ const AppointmentDetails = () => {
                   Address
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  <p>{address.street}</p>
+                  <p>{address?.street || "-"}</p>
                   <p>
-                    {address.district}, {address.city}
+                    {address?.district || "-"}, {address?.city || "-"}
                   </p>
-                  <p>{address.country}</p>
+                  <p>{address?.country || "-"}</p>
                 </dd>
               </div>
             </dl>
           </div>
         </div>
 
-        {appointment?.data.status === "Pending" && (
+        {currentStatus === "Pending" && (
           <div className="mt-8 flex space-x-4">
             <button
               onClick={() => handleStatusChange("Accepted")}
@@ -286,7 +298,7 @@ const AppointmentDetails = () => {
           </div>
         )}
 
-        {appointment?.data.status === "Accepted" && (
+        {currentStatus === "Accepted" && (
           <div className="mt-8">
             <div className="bg-white shadow overflow-hidden sm:rounded-lg">
               <div className="px-4 py-5 sm:px-6 bg-indigo-50">

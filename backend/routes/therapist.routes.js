@@ -25,6 +25,8 @@ import {
   getAvailabilityController,
   getMyAvailabilities,
   setAvailabilityActive,
+  setAvailabilityInactive,
+  updateMyAvailabilityTimeSlotStatus,
   updateAvailabilityTimeSlot,
   updateMyAvailability,
 } from "../controllers/therapist/availability.controller.js";
@@ -87,7 +89,15 @@ router
   .route("/my-availability/:id")
   .patch(updateMyAvailability)
   .delete(deleteAvailability);
+router.patch(
+  "/my-availability/:id/timeslot",
+  updateMyAvailabilityTimeSlotStatus
+);
 router.put("/my-availability/:availabilityId/activate", setAvailabilityActive);
+router.put(
+  "/my-availability/:availabilityId/deactivate",
+  setAvailabilityInactive
+);
 
 router.route("/my-statistics").get(getTherapistStatistics);
 

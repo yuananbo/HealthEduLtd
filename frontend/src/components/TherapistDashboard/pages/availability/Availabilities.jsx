@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import api from "../../../../utils/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import AvailabilityCard from "./AvailabilityCard";
 import { useAvailability } from "../../../../hooks/useAvailability";
 import Button from "../../../common/Button";
 
-const Availabilities = ({ history }) => {
+const Availabilities = () => {
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const {
     activateAvailability,
     deactivateAvailability,
@@ -40,8 +41,7 @@ const Availabilities = ({ history }) => {
   }
 
   const handleEdit = (availability) => {
-    history.push({
-      pathname: `/edit-availability/${availability.id}`,
+    navigate(`/therapist/availability/${availability.id}/edit`, {
       state: { availability },
     });
   };
@@ -92,6 +92,7 @@ const Availabilities = ({ history }) => {
               key={availability.id}
               availability={availability}
               onUpdate={handleUpdate}
+              onEdit={handleEdit}
             />
           ))}
         </div>

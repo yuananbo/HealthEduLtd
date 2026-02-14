@@ -99,6 +99,7 @@ class AvailabilityService {
 
     const availability = await Availability.findOne({
       therapist: therapistId,
+      isActive: true,
       "availabilities.date": {
         $gte: searchDate,
         $lt: moment(searchDate).endOf("day").toDate(),
@@ -176,33 +177,118 @@ class AvailabilityService {
     }
   }
 
-  // Set availability to active
-  static async setAvailabilityActive(therapistId, availabilityId) {
-    // First, set all availabilities for this therapist to inactive
-    await Availability.updateMany(
-      { therapist: therapistId },
-      { isActive: false }
+  // Update one time slot status within a therapist availability
+  static async updateTimeSlotStatus(
+    therapistId,
+    availabilityId,
+    date,
+    time,
+    isActive
+  ) {
+    const availability = await Availability.findOne({
+      _id: availabilityId,
+      therapist: therapistId,
+    });
+
+    if (!availability) {
+      throw new Error("Availability not found or not authorized");
+    }
+
+    const targetDate = moment(date).startOf("day");
+    const dateEntry = availability.availabilities.find((item) =>
+      moment(item.date).isSame(targetDate, "day")
     );
 
-    // Then, set the specified availability to active
-    const updatedAvailability = await Availability.findOneAndUpdate(
-      { _id: availabilityId, therapist: therapistId },
-      { isActive: true },
-      { new: true }
-    );
+    if (!dateEntry) {
+      throw new Error("Date not found in this availability");
+    }
+
+    const timeEntry = dateEntry.times.find((item) => item.time === time);
+    if (!timeEntry) {
+      throw new Error("Time slot not found in this availability");
+    }
+
+    timeEntry.isActive = Boolean(isActive);
+    await availability.save();
+
+    return availability;
+  }
+
+  // Set availability to active
+  static async setAvailabilityActive(therapistId, availabilityId) {
+    const updatedAvailability = await Availability.findOne({
+      _id: availabilityId,
+      therapist: therapistId,
+    });
 
     if (!updatedAvailability) {
       throw new Error("Availability not found or not authorized");
     }
 
+    updatedAvailability.isActive = true;
+    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
+      (dateEntry) => ({
+        ...dateEntry.toObject(),
+        times: (dateEntry.times || []).map((slot) => ({
+          ...slot.toObject(),
+          isActive: true,
+        })),
+      })
+    );
+
+    await updatedAvailability.save();
+
+    return updatedAvailability;
+  }
+
+  // Set one availability to inactive
+  static async setAvailabilityInactive(therapistId, availabilityId) {
+    const updatedAvailability = await Availability.findOne({
+      _id: availabilityId,
+      therapist: therapistId,
+    });
+
+    if (!updatedAvailability) {
+      throw new Error("Availability not found or not authorized");
+    }
+
+    updatedAvailability.isActive = false;
+    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
+      (dateEntry) => ({
+        ...dateEntry.toObject(),
+        times: (dateEntry.times || []).map((slot) => ({
+          ...slot.toObject(),
+          isActive: false,
+        })),
+      })
+    );
+
+    await updatedAvailability.save();
+
     return updatedAvailability;
   }
 
   static async getActiveAvailability(therapistId) {
-    return await Availability.findOne({
+    const activeAvailabilities = await Availability.find({
       therapist: therapistId,
       isActive: true,
     });
+
+    if (!activeAvailabilities || activeAvailabilities.length === 0) {
+      return null;
+    }
+
+    // Merge all active availability documents into one payload expected by frontend.
+    const mergedAvailabilities = activeAvailabilities.flatMap(
+      (item) => item.availabilities || []
+    );
+
+    return {
+      therapist: therapistId,
+      isActive: true,
+      availabilityIds: activeAvailabilities.map((item) => item._id),
+      availabilities: mergedAvailabilities,
+    };
   }
 
   // Delete availability by ID

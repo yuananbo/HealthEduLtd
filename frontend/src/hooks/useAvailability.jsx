@@ -54,7 +54,7 @@ export const useAvailability = (onUpdate) => {
     handleAction(
       () =>
         api.put(
-          `/api/v1/therapist/my-availability/${id}/deactivate`,
+          `/therapist/my-availability/${id}/deactivate`,
           {},
           {
             headers: {
@@ -78,10 +78,48 @@ export const useAvailability = (onUpdate) => {
       id
     );
 
+  const toggleTimeSlotStatus = async (
+    availabilityId,
+    date,
+    time,
+    isActive
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.patch(
+        `/therapist/my-availability/${availabilityId}/timeslot`,
+        { date, time, isActive },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentUser.token}`,
+          },
+        }
+      );
+
+      if (response.data) {
+        onUpdate(availabilityId);
+        return response.data;
+      }
+      throw new Error("No data received from the server");
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "An unknown error occurred";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     activateAvailability,
     deactivateAvailability,
     deleteAvailability,
+    toggleTimeSlotStatus,
     isLoading,
     error,
   };
