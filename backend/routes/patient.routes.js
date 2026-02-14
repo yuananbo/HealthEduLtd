@@ -19,7 +19,11 @@ import {
   getAppointments,
   rescheduleAppointment,
 } from "../controllers/patient/appointment.controller.js";
-import { getEducationContentByTopic } from "../controllers/patient/education.controller.js";
+import {
+  getEducationContentByTopic,
+  saveEducationContent,
+  getSavedEducationContent,
+} from "../controllers/patient/education.controller.js";
 import { getAppointmentDetails } from "../controllers/therapist/appointment.controller.js";
 import validateResetToken from "../middleware/validateResetToken.js";
 
@@ -68,6 +72,8 @@ router.get("/payment-success-page", (req, res) => {
 
 router.route("/therapists").get(getAllVerifiedTherapists);
 router.get("/education/content", getEducationContentByTopic);
+router.post("/education/save", saveEducationContent);
+router.get("/education/saved", getSavedEducationContent);
 
 router.get("/profile", (req, res) => {
   res.json(req.user);
