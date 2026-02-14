@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import moment from "moment";
-import { FaRegCalendarTimes } from "react-icons/fa";
+import { FaRegCalendarTimes, FaHome } from "react-icons/fa";
 import AvailabilityDayPicker from "../../../common/widgets/Calender";
 import useDataFetching from "../../../../hooks/useFech";
 import Loading from "../../../utilities/Loading";
@@ -13,7 +13,7 @@ import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
 
-const BookAppointment = () => {
+const BookHomeCare = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { therapist } = location.state;
@@ -23,13 +23,35 @@ const BookAppointment = () => {
   const [load, setLoad] = useState(false);
   const [formattedData, setFormattedData] = useState(null);
   const [formData, setFormData] = useState({
-    service: "",
+    service: "Home Care Rehab",
     purpose: "",
     notes: "",
   });
+  const [homeAddress, setHomeAddress] = useState({
+    country: "",
+    city: "",
+    district: "",
+    street: "",
+  });
+
   const [loading, error, data] = useDataFetching(
     `/therapist/availability/${therapist.id}`
   );
+
+  // Pre-fill home address from patient profile if available
+  useEffect(() => {
+    if (currentUser && currentUser.user) {
+      const user = currentUser.user;
+      if (user.address) {
+        setHomeAddress({
+          country: user.address.country || "",
+          city: user.address.city || "",
+          district: user.address.district || "",
+          street: user.address.street || "",
+        });
+      }
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (data && data.status === "success" && data.activeAvailability) {
@@ -43,13 +65,13 @@ const BookAppointment = () => {
   }, [data]);
 
   useEffect(() => {
-    const pendingBooking = localStorage.getItem("pendingBooking");
+    const pendingBooking = localStorage.getItem("pendingHomeCareBooking");
     if (pendingBooking && formattedData) {
       const { therapistId, date, time } = JSON.parse(pendingBooking);
       updateAvailability(therapistId, date, time).then(() => {
         updateLocalAvailability(date, time);
-        localStorage.removeItem("pendingBooking");
-        toast.success("Payment successful. Appointment booked.");
+        localStorage.removeItem("pendingHomeCareBooking");
+        toast.success("Payment successful. Home care appointment booked.");
         navigate("/patient/payment-success-page");
       });
     }
@@ -71,10 +93,17 @@ const BookAppointment = () => {
     });
   };
 
+  const handleAddressChange = (e) => {
+    setHomeAddress({
+      ...homeAddress,
+      [e.target.name]: e.target.value,
+    });
+  };
+
   const updateAvailability = async (therapistId, date, time) => {
     try {
       const formattedDate = moment(date).format("YYYY-MM-DD");
-      const formattedTime = time.length === 4 ? `0${time}` : time; // Ensure time is in HH:MM format
+      const formattedTime = time.length === 4 ? `0${time}` : time;
       await api.put(
         `/therapist/availability/${therapistId}`,
         {
@@ -119,7 +148,7 @@ const BookAppointment = () => {
     setFormattedData({ availabilities: updatedAvailabilities });
   };
 
-  const bookAppointment = async () => {
+  const bookHomeCareAppointment = async () => {
     try {
       setLoad(true);
       const response = await api.post(
@@ -131,7 +160,8 @@ const BookAppointment = () => {
           service: formData.service,
           purpose: formData.purpose,
           notes: formData.notes,
-          appointmentType: "in-person",
+          appointmentType: "home-care",
+          homeAddress: homeAddress,
           paymentDetails: {
             amount: 5000,
             currency: "RWF",
@@ -150,7 +180,7 @@ const BookAppointment = () => {
         response.data.paymentResponse.meta.authorization.redirect
       ) {
         localStorage.setItem(
-          "pendingBooking",
+          "pendingHomeCareBooking",
           JSON.stringify({
             therapistId: therapist.id,
             date: moment(selectedDate).format("YYYY-MM-DD"),
@@ -168,12 +198,14 @@ const BookAppointment = () => {
             : selectedTime?.time;
         await updateAvailability(therapist.id, formattedDate, formattedTime);
         updateLocalAvailability(formattedDate, formattedTime);
-        toast.success("Appointment booked successfully");
+        toast.success("Home care appointment booked successfully");
         navigate("/patient/payment-success-page");
       }
     } catch (err) {
-      console.error("Error booking appointment:", err);
-      toast.error(err.response?.data?.message || "Error booking appointment");
+      console.error("Error booking home care appointment:", err);
+      toast.error(
+        err.response?.data?.error || "Error booking home care appointment"
+      );
     } finally {
       setLoad(false);
     }
@@ -192,12 +224,15 @@ const BookAppointment = () => {
       return;
     }
 
-    await bookAppointment();
+    if (!homeAddress.country || !homeAddress.city) {
+      toast.error("Please provide at least your country and city for the home address");
+      return;
+    }
+
+    await bookHomeCareAppointment();
   };
 
   if (loading) return <Loading />;
-  // if (error)
-  //   return <div className="text-center text-red-500">Error: {error}</div>;
 
   if (
     !formattedData ||
@@ -212,23 +247,36 @@ const BookAppointment = () => {
           No Availabilities
         </h2>
         <p className="text-gray-600 mb-6">
-          We couldn't find any open slots at the moment.
+          We couldn&apos;t find any open slots at the moment.
         </p>
-        <Link to="/patient/therapist-list">
-          <Button label={"  Back to Therapist Page"} variant="filled" />
+        <Link to="/patient/home-care">
+          <Button label="Back to Home Care" variant="filled" />
         </Link>
       </div>
     );
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
-          Book an Appointment
-        </h1>
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600">
+              <FaHome className="text-lg" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Book Home Care Visit
+            </h1>
+          </div>
+          <p className="text-gray-500 ml-13">
+            A therapist will visit your home for rehabilitation
+          </p>
+        </div>
         <TherapistCard therapist={therapist} />
       </div>
+
       {formattedData && formattedData.availabilities && (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Date & Time Selection */}
           <div className="bg-white rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-700">
               Select Date and Time
@@ -256,6 +304,65 @@ const BookAppointment = () => {
             </div>
           </div>
 
+          {/* Home Address Section */}
+          <div className="bg-white rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-700 flex items-center">
+              <FaHome className="text-blue-500 mr-2" />
+              Home Address
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              The therapist will visit this address. We&apos;ve pre-filled it from
+              your profile if available.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                handleChange={handleAddressChange}
+                value={homeAddress.country}
+                labelText="Country *"
+                labelFor="country"
+                id="country"
+                name="country"
+                type="text"
+                isRequired={true}
+                placeholder="e.g. Rwanda"
+              />
+              <Input
+                handleChange={handleAddressChange}
+                value={homeAddress.city}
+                labelText="City *"
+                labelFor="city"
+                id="city"
+                name="city"
+                type="text"
+                isRequired={true}
+                placeholder="e.g. Kigali"
+              />
+              <Input
+                handleChange={handleAddressChange}
+                value={homeAddress.district}
+                labelText="District"
+                labelFor="district"
+                id="district"
+                name="district"
+                type="text"
+                isRequired={false}
+                placeholder="e.g. Gasabo"
+              />
+              <Input
+                handleChange={handleAddressChange}
+                value={homeAddress.street}
+                labelText="Street / Detailed Address"
+                labelFor="street"
+                id="street"
+                name="street"
+                type="text"
+                isRequired={false}
+                placeholder="e.g. KG 123 St, House No. 5"
+              />
+            </div>
+          </div>
+
+          {/* Appointment Details */}
           <div className="bg-white rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-700">
               Appointment Details
@@ -280,7 +387,7 @@ const BookAppointment = () => {
                 id="purpose"
                 name="purpose"
                 isRequired={true}
-                placeholder="Reason for appointment"
+                placeholder="Reason for home care visit"
                 component="textarea"
               />
               <Input
@@ -292,18 +399,19 @@ const BookAppointment = () => {
                 name="notes"
                 type="text"
                 isRequired={false}
-                placeholder="Any additional notes or information for the therapist"
+                placeholder="Any additional notes, e.g. parking instructions, accessibility info"
                 component="textarea"
               />
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+          {/* Payment */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-lg p-6 text-white">
             <h2 className="text-2xl font-bold mb-4">Payment Details</h2>
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-3xl font-bold">5,000 RWF</p>
-                <p className="text-sm opacity-75 mt-1">Appointment cost</p>
+                <p className="text-sm opacity-75 mt-1">Home visit cost</p>
               </div>
               <div className="bg-white text-blue-600 py-2 px-4 rounded-full font-semibold">
                 Secure Payment
@@ -311,13 +419,14 @@ const BookAppointment = () => {
             </div>
           </div>
 
+          {/* Submit */}
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={load}
-              className="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-lg font-semibold transition duration-150 ease-in-out"
+              className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-lg font-semibold transition duration-150 ease-in-out"
             >
-              {load ? "Booking..." : "Book Appointment"}
+              {load ? "Booking..." : "Book Home Visit"}
             </button>
           </div>
         </form>
@@ -326,4 +435,4 @@ const BookAppointment = () => {
   );
 };
 
-export default BookAppointment;
+export default BookHomeCare;

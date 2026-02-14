@@ -221,6 +221,57 @@ const AppointmentDetails = () => {
                   {appointment?.data?.purpose}
                 </dd>
               </div>
+              {appointment?.data?.notes && (
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    {appointment?.data?.notes}
+                  </dd>
+                </div>
+              )}
+              {appointment?.data?.appointmentType && (
+                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500 flex items-center">
+                    <FiMapPin className="mr-2" />
+                    Appointment Type
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        appointment?.data?.appointmentType === "home-care"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {appointment?.data?.appointmentType === "home-care"
+                        ? "Home Care Visit"
+                        : "In-Person"}
+                    </span>
+                  </dd>
+                </div>
+              )}
+              {appointment?.data?.appointmentType === "home-care" &&
+                appointment?.data?.homeAddress && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-blue-50">
+                    <dt className="text-sm font-medium text-blue-700 flex items-center">
+                      <FiMapPin className="mr-2" />
+                      Home Visit Address
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      {appointment.data.homeAddress.street && (
+                        <p>{appointment.data.homeAddress.street}</p>
+                      )}
+                      {appointment.data.homeAddress.district && (
+                        <p>{appointment.data.homeAddress.district}</p>
+                      )}
+                      <p>
+                        {appointment.data.homeAddress.city}
+                        {appointment.data.homeAddress.country &&
+                          `, ${appointment.data.homeAddress.country}`}
+                      </p>
+                    </dd>
+                  </div>
+                )}
               <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   <FiFlag className="mr-2" />

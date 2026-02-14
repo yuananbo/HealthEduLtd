@@ -117,8 +117,17 @@ import { sendEmail } from "../../utils/sendGridEmail.js";
 
 export const createAppointment = asyncHandler(async (req, res) => {
   try {
-    const { therapist, date, time, service, purpose, paymentDetails } =
-      req.body;
+    const {
+      therapist,
+      date,
+      time,
+      service,
+      purpose,
+      paymentDetails,
+      notes,
+      appointmentType,
+      homeAddress,
+    } = req.body;
     const patientId = req.user._id;
 
     // Check if the therapist exists
@@ -137,15 +146,33 @@ export const createAppointment = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: "Payment details are required" });
     }
 
+    // For home-care appointments, validate that home address is provided
+    if (appointmentType === "home-care") {
+      const addr = homeAddress || {};
+      if (!addr.country || !addr.city) {
+        return res
+          .status(400)
+          .json({ error: "Home address (country and city) is required for home care appointments" });
+      }
+    }
+
     // Create a new appointment
-    const newAppointment = new Appointment({
+    const appointmentData = {
       patient: patientId,
       therapist,
       date,
       time,
       service,
       purpose,
-    });
+      notes: notes || "",
+      appointmentType: appointmentType || "in-person",
+    };
+
+    if (appointmentType === "home-care" && homeAddress) {
+      appointmentData.homeAddress = homeAddress;
+    }
+
+    const newAppointment = new Appointment(appointmentData);
 
     // Save the new appointment to the database
     const savedAppointment = await newAppointment.save();

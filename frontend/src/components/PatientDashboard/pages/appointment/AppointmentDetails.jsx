@@ -142,6 +142,48 @@ const AppointmentDetails = () => {
                   </p>
                 </div>
               </div>
+              {appointment?.data?.notes && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-1">Notes</p>
+                  <p className="text-gray-800 font-medium flex items-start">
+                    <FiEdit3 className="text-greenPrimary mr-2 mt-1 flex-shrink-0" />
+                    {appointment?.data?.notes}
+                  </p>
+                </div>
+              )}
+              {appointment?.data?.appointmentType && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-1">Appointment Type</p>
+                  <p className="text-gray-800 font-medium flex items-center">
+                    <FiMapPin className="text-greenPrimary mr-2" />
+                    {appointment?.data?.appointmentType === "home-care"
+                      ? "Home Care Visit"
+                      : "In-Person"}
+                  </p>
+                </div>
+              )}
+              {appointment?.data?.appointmentType === "home-care" &&
+                appointment?.data?.homeAddress && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 mb-1">Home Address</p>
+                    <div className="text-gray-800 font-medium flex items-start">
+                      <FiMapPin className="text-blue-500 mr-2 mt-1 flex-shrink-0" />
+                      <div>
+                        {appointment.data.homeAddress.street && (
+                          <p>{appointment.data.homeAddress.street}</p>
+                        )}
+                        {appointment.data.homeAddress.district && (
+                          <p>{appointment.data.homeAddress.district}</p>
+                        )}
+                        <p>
+                          {appointment.data.homeAddress.city}
+                          {appointment.data.homeAddress.country &&
+                            `, ${appointment.data.homeAddress.country}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">

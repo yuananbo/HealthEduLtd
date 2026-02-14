@@ -20,13 +20,16 @@ class AppointmentService {
     purpose,
     payment,
     patientId,
+    notes,
+    appointmentType,
+    homeAddress,
   }) {
     const existingTherapist = await Therapist.findById(therapist);
     if (!existingTherapist) {
       throw new Error("Therapist not found");
     }
 
-    const newAppointment = new Appointment({
+    const appointmentData = {
       patient: patientId,
       therapist,
       date,
@@ -34,7 +37,15 @@ class AppointmentService {
       service,
       purpose,
       payment,
-    });
+      notes: notes || "",
+      appointmentType: appointmentType || "in-person",
+    };
+
+    if (appointmentType === "home-care" && homeAddress) {
+      appointmentData.homeAddress = homeAddress;
+    }
+
+    const newAppointment = new Appointment(appointmentData);
 
     const savedAppointment = await newAppointment.save();
 

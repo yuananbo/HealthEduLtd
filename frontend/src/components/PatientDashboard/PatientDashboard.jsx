@@ -9,6 +9,7 @@ import TherapistList from "./pages/therapists/TherapistList";
 import BookAppointment from "./pages/appointment/BookAppointment";
 import AppointmentSuccess from "./pages/appointment/AppointmentSuccess";
 import HomeCareRehab from "./pages/services/HomeCareRehab";
+import BookHomeCare from "./pages/services/BookHomeCare";
 import AssistiveDevice from "./pages/services/AssistiveDevice";
 import Education from "./pages/services/Education";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -27,6 +28,7 @@ const PatientDashboard = () => {
         </Route>
         <Route path="therapist-list" element={<TherapistList />} />
         <Route path="home-care" element={<HomeCareRehab />} />
+        <Route path="home-care/book" element={<BookHomeCare />} />
         <Route path="assistive-device" element={<AssistiveDevice />} />
         <Route path="education" element={<Education />} />
         <Route path="payment-success-page" element={<AppointmentSuccess />} />

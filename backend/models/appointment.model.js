@@ -41,6 +41,11 @@ const appointmentSchema = new mongoose.Schema({
     ],
     default: "Waiting for Payment",
   },
+  appointmentType: {
+    type: String,
+    enum: ["in-person", "home-care"],
+    default: "in-person",
+  },
   service: {
     type: String,
     required: true,
@@ -49,6 +54,16 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     required: true,
     // maxlength: 1000,
+  },
+  notes: {
+    type: String,
+    default: "",
+  },
+  homeAddress: {
+    country: { type: String, default: "" },
+    city: { type: String, default: "" },
+    district: { type: String, default: "" },
+    street: { type: String, default: "" },
   },
   sessionNotes: [
     {
