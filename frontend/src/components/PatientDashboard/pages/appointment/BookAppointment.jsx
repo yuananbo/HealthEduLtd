@@ -47,19 +47,6 @@ const BookAppointment = () => {
     }
   }, [data]);
 
-  useEffect(() => {
-    const pendingBooking = localStorage.getItem("pendingBooking");
-    if (pendingBooking && formattedData) {
-      const { therapistId, date, time } = JSON.parse(pendingBooking);
-      updateAvailability(therapistId, date, time).then(() => {
-        updateLocalAvailability(date, time);
-        localStorage.removeItem("pendingBooking");
-        toast.success("Payment successful. Appointment booked.");
-        navigate("/patient/payment-success-page");
-      });
-    }
-  }, [formattedData]);
-
   const handleDateClick = (date) => {
     setSelectedDate(date);
     setSelectedTime(null);
@@ -74,54 +61,6 @@ const BookAppointment = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
-  };
-
-  const updateAvailability = async (therapistId, date, time) => {
-    try {
-      const formattedDate = moment(date).format("YYYY-MM-DD");
-      const formattedTime = time.length === 4 ? `0${time}` : time; // Ensure time is in HH:MM format
-      await api.put(
-        `/therapist/availability/${therapistId}`,
-        {
-          date: formattedDate,
-          time: formattedTime,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${currentUser.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    } catch (error) {
-      console.error(
-        "Error updating availability:",
-        error.response?.data?.message || error.message
-      );
-    }
-  };
-
-  const updateLocalAvailability = (date, time) => {
-    if (!formattedData) return;
-
-    const updatedAvailabilities = formattedData.availabilities.map(
-      (availability) => {
-        if (availability.date === date) {
-          return {
-            ...availability,
-            times: availability.times.map((t) => {
-              if (t.time === time) {
-                return { ...t, isActive: false };
-              }
-              return t;
-            }),
-          };
-        }
-        return availability;
-      }
-    );
-
-    setFormattedData({ availabilities: updatedAvailabilities });
   };
 
   const bookAppointment = async () => {
@@ -152,25 +91,9 @@ const BookAppointment = () => {
         response.data.paymentResponse &&
         response.data.paymentResponse.meta.authorization.redirect
       ) {
-        localStorage.setItem(
-          "pendingBooking",
-          JSON.stringify({
-            therapistId: therapist.id,
-            date: moment(selectedDate).format("YYYY-MM-DD"),
-            time: selectedTime?.time,
-          })
-        );
-
         window.location.href =
           response.data.paymentResponse.meta.authorization.redirect;
       } else {
-        const formattedDate = moment(selectedDate).format("YYYY-MM-DD");
-        const formattedTime =
-          selectedTime?.time.length === 4
-            ? `0${selectedTime?.time}`
-            : selectedTime?.time;
-        await updateAvailability(therapist.id, formattedDate, formattedTime);
-        updateLocalAvailability(formattedDate, formattedTime);
         toast.success("Appointment booked successfully");
         navigate("/patient/payment-success-page");
       }

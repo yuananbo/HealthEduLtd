@@ -5,6 +5,7 @@ import Patient from "../models/patient.model.js";
 import { sendEmail } from "../utils/sendGridEmail.js";
 import { NotFoundError } from "../utils/error.js";
 import SessionNote from "../models/sessionNotes.model.js";
+import AvailabilityService from "./availability.service.js";
 import {
   appointmentConfirmationTemplate,
   appointmentStatusUpdate,
@@ -219,6 +220,23 @@ class AppointmentService {
 
     appointment.status = status;
     await appointment.save();
+
+    // Lock the selected slot only when therapist accepts the appointment.
+    if (status === "Accepted") {
+      const availabilityUpdate = await AvailabilityService.updateAvailability(
+        appointment.therapist,
+        appointment.date,
+        appointment.time
+      );
+
+      if (!availabilityUpdate.updated) {
+        const availabilityError = new Error(
+          "Unable to reserve slot for this appointment"
+        );
+        availabilityError.status = 400;
+        throw availabilityError;
+      }
+    }
 
     const baseURL = `${req.protocol}://${req.get("host")}`;
     const appointmentLinkPatient = `${baseURL}/patient/appointments/${appointment._id}`;

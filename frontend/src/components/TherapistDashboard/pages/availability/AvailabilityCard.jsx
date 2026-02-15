@@ -88,8 +88,10 @@ const AvailabilityCard = ({ availability, onUpdate, onEdit }) => {
                 {dateAvailability.times.map((time, timeIndex) => (
                   <li key={timeIndex} className="flex items-center gap-2 mb-2">
                     <span
-                      className={`text-gray-600 bg-gray-100 rounded px-3 py-1 inline-block ${
-                        time.isActive ? "" : "line-through"
+                      className={`rounded px-3 py-1 inline-block ${
+                        time.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600 line-through"
                       }`}
                     >
                       {time.time}

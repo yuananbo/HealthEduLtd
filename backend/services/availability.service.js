@@ -209,6 +209,13 @@ class AvailabilityService {
     }
 
     timeEntry.isActive = Boolean(isActive);
+
+    // Keep parent availability visibility in sync with slot-level availability.
+    const hasAnyActiveSlot = (availability.availabilities || []).some((d) =>
+      (d.times || []).some((slot) => Boolean(slot.isActive))
+    );
+    availability.isActive = hasAnyActiveSlot;
+
     await availability.save();
 
     return availability;
