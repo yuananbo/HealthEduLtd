@@ -12,6 +12,7 @@ import Payment from "../models/payment.model.js";
 import Availability from "../models/availability.model.js";
 import SessionNote from "../models/sessionNotes.model.js";
 import TherapistRating from "../models/therapistRating.model.js";
+import EducationContent from "../models/educationContent.model.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,6 +92,11 @@ const initDatabase = async () => {
     await TherapistRating.collection.createIndex({ patient: 1, therapist: 1 });
     console.log("  ✓ TherapistRating indexes created");
 
+    // EducationContent indexes
+    await EducationContent.collection.createIndex({ topic: 1, isPublished: 1 });
+    await EducationContent.collection.createIndex({ topic: 1, order: 1 });
+    console.log("  ✓ EducationContent indexes created");
+
     // Get collection stats
     console.log("\n📈 Collection Statistics:");
     const collectionNames = [
@@ -102,6 +108,7 @@ const initDatabase = async () => {
       "availabilities",
       "sessionnotes",
       "therapistratings",
+      "educationcontents",
     ];
 
     for (const name of collectionNames) {

@@ -105,6 +105,10 @@ const patientSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    savedEducationContents: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );
