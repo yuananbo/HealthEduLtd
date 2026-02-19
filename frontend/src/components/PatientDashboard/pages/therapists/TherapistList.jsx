@@ -8,15 +8,12 @@ import Loading from "../../../utilities/Loading";
 const TherapistList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
+  const [allTherapists, setAllTherapists] = useState([]);
   const [filteredTherapists, setFilteredTherapists] = useState([]);
-  const [loading, error, data, fetchData] = useDataFetching(
+  const [loading, error, data] = useDataFetching(
     "/patient/therapists"
   );
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   useEffect(() => {
     if (data && data.status === "success" && data.data) {
@@ -29,29 +26,26 @@ const TherapistList = () => {
         bio: therapist.bio,
         specialties: [therapist.specialization],
       }));
+      setAllTherapists(therapists);
       setFilteredTherapists(therapists);
     }
   }, [data]);
 
   const specialties = [
     "All",
-    ...new Set(
-      filteredTherapists.flatMap((therapist) => therapist.specialties)
-    ),
+    ...new Set(allTherapists.flatMap((therapist) => therapist.specialties)),
   ];
 
   useEffect(() => {
-    if (filteredTherapists.length > 0) {
-      const filtered = filteredTherapists.filter(
-        (therapist) =>
-          therapist.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-          (selectedSpecialty === "" ||
-            selectedSpecialty === "All" ||
-            therapist.specialties.includes(selectedSpecialty))
-      );
-      setFilteredTherapists(filtered);
-    }
-  }, [searchTerm, selectedSpecialty]);
+    const filtered = allTherapists.filter(
+      (therapist) =>
+        therapist.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (selectedSpecialty === "" ||
+          selectedSpecialty === "All" ||
+          therapist.specialties.includes(selectedSpecialty))
+    );
+    setFilteredTherapists(filtered);
+  }, [allTherapists, searchTerm, selectedSpecialty]);
 
   if (loading) {
     return <Loading />;

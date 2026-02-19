@@ -66,7 +66,11 @@ export const getAllAvailabilitiesController = async (req, res) => {
       therapistId
     );
 
-    if (!activeAvailability) {
+    if (
+      !activeAvailability ||
+      !activeAvailability.availabilities ||
+      activeAvailability.availabilities.length === 0
+    ) {
       return res
         .status(404)
         .json({ message: "No active availability found for this therapist" });
@@ -174,6 +178,52 @@ export const updateAvailabilityTimeSlot = async (req, res) => {
   }
 };
 
+export const updateMyAvailabilityTimeSlotStatus = asyncHandler(
+  async (req, res) => {
+    try {
+      if (req.user.userType !== "therapist") {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const therapistId = req.user._id;
+      const { id } = req.params;
+      const { date, time, isActive } = req.body;
+
+      if (!date || !time || typeof isActive !== "boolean") {
+        return res.status(400).json({
+          message: "date, time and isActive(boolean) are required",
+        });
+      }
+
+      const updatedAvailability = await AvailabilityService.updateTimeSlotStatus(
+        therapistId,
+        id,
+        date,
+        time,
+        isActive
+      );
+
+      res.status(200).json({
+        message: "Time slot status updated successfully",
+        availability: updatedAvailability,
+      });
+    } catch (error) {
+      console.error("Error in updateMyAvailabilityTimeSlotStatus:", error);
+      if (
+        error.message === "Availability not found or not authorized" ||
+        error.message === "Date not found in this availability" ||
+        error.message === "Time slot not found in this availability"
+      ) {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({
+        message: "Failed to update time slot status",
+        error: error.message,
+      });
+    }
+  }
+);
+
 export const setAvailabilityActive = asyncHandler(async (req, res) => {
   try {
     console.log("Request Body:", req.body);
@@ -198,6 +248,36 @@ export const setAvailabilityActive = asyncHandler(async (req, res) => {
     console.error("Error in setAvailabilityActive:", error);
     res.status(500).json({
       message: "Failed to set availability as active",
+      error: error.message,
+    });
+  }
+});
+
+export const setAvailabilityInactive = asyncHandler(async (req, res) => {
+  try {
+    if (req.user.userType !== "therapist") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const therapistId = req.user._id;
+    const { availabilityId } = req.params;
+
+    const updatedAvailability = await AvailabilityService.setAvailabilityInactive(
+      therapistId,
+      availabilityId
+    );
+
+    res.status(200).json({
+      message: "Availability set as inactive successfully",
+      availability: updatedAvailability,
+    });
+  } catch (error) {
+    console.error("Error in setAvailabilityInactive:", error);
+    if (error.message === "Availability not found or not authorized") {
+      return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({
+      message: "Failed to set availability as inactive",
       error: error.message,
     });
   }

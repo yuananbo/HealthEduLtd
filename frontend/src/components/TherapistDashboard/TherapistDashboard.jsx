@@ -7,6 +7,7 @@ import SuccessPage from "../auth/therapist/signup/SuccessPage";
 import { UserContext } from "../../context/UserContext";
 import Availabilities from "./pages/availability/Availabilities";
 import CreateAvailability from "./pages/availability/CreateAvailability";
+import EditAvailability from "./pages/availability/EditAvailability";
 import Appointments from "./pages/appointments/Appointments";
 import AppointmentDetails from "./pages/appointments/AppointmentDetails";
 import Dashboard from "./pages/dasboard/Dashboard";
@@ -64,6 +65,7 @@ const TherapistDashboard = () => {
         <Route path="availability">
           <Route index element={<Availabilities />} />
           <Route path="create" element={<CreateAvailability />} />
+          <Route path=":id/edit" element={<EditAvailability />} />
         </Route>
         <Route path="appointments">
           <Route index element={<Appointments />} />

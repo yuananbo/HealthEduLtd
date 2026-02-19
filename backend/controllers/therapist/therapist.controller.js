@@ -118,23 +118,43 @@ export const signupTherapist = async (req, res) => {
 
     // console.log("Verify link:", verifyLink);
 
-    // Send OTP to therapist
-    await sendEmail({
-      // receipientEmail: newTherapist.email,
-      recipientEmail: email,
-      subject: "Email Verification Mobirehab",
-      template_data: {
-        name: firstName,
-        otp: otp,
-      },
-      htmlContent: signUpTemplate({ verifyLink }),
-    });
+    try {
+      // Send OTP to therapist
+      await sendEmail({
+        recipientEmail: email,
+        subject: "Email Verification Mobirehab",
+        template_data: {
+          name: firstName,
+          otp: otp,
+        },
+        htmlContent: signUpTemplate({ verifyLink }),
+      });
 
-    res.json({
-      status: "success",
-      message: `OTP sent to ${email}`,
-      user: newTherapist,
-    });
+      return res.json({
+        status: "success",
+        message: `OTP sent to ${email}`,
+        user: newTherapist,
+      });
+    } catch (emailError) {
+      console.log("Email sending failed during therapist signup:", emailError);
+
+      if (process.env.NODE_ENV !== "production") {
+        return res.status(201).json({
+          status: "success",
+          message:
+            "Account created, but verification email could not be sent. Use verifyLink for local testing.",
+          user: newTherapist,
+          verifyLink,
+          otp,
+        });
+      }
+
+      return res.status(502).json({
+        status: "error",
+        message:
+          "Account created, but verification email could not be sent. Please contact support.",
+      });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
@@ -338,9 +358,10 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
     }
 
     // Calculate total patients for the therapist using the appointments collection
-    const totalPatients = await Appointment.distinct("patient", {
+    const uniquePatients = await Appointment.distinct("patient", {
       therapist: therapistId,
-    }).countDocuments();
+    });
+    const totalPatients = uniquePatients.length;
 
     const totalAppointments = await Appointment.countDocuments({
       therapist: therapistId,

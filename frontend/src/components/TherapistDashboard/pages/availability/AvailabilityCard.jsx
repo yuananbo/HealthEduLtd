@@ -9,7 +9,7 @@ import { BiPowerOff } from "react-icons/bi";
 import { useAvailability } from "../../../../hooks/useAvailability";
 import toast from "react-hot-toast";
 
-const AvailabilityCard = ({ availability, onUpdate }) => {
+const AvailabilityCard = ({ availability, onUpdate, onEdit }) => {
   const { id, name, dates, isActive } = availability;
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -17,6 +17,7 @@ const AvailabilityCard = ({ availability, onUpdate }) => {
     activateAvailability,
     deactivateAvailability,
     deleteAvailability,
+    toggleTimeSlotStatus,
     isLoading,
     error,
   } = useAvailability(onUpdate);
@@ -62,10 +63,12 @@ const AvailabilityCard = ({ availability, onUpdate }) => {
             show={showDropdown}
             onClose={() => setShowDropdown(false)}
             availabilityId={id}
+            availability={availability}
             isActive={isActive}
             onActivate={activateAvailability}
             onDeactivate={deactivateAvailability}
             onDelete={deleteAvailability}
+            onEdit={onEdit}
           />
         </div>
       </div>
@@ -83,28 +86,46 @@ const AvailabilityCard = ({ availability, onUpdate }) => {
               <span className="font-semibold text-gray-700">Times:</span>
               <ul className="mt-2 space-y-1">
                 {dateAvailability.times.map((time, timeIndex) => (
-                  <li
-                    key={timeIndex}
-                    className={`text-gray-600 bg-gray-100 rounded px-3 py-1 inline-block mr-2 mb-2 ${
-                      time.isActive ? "" : "line-through"
-                    }`}
-                  >
-                    {time.time}
+                  <li key={timeIndex} className="flex items-center gap-2 mb-2">
+                    <span
+                      className={`rounded px-3 py-1 inline-block ${
+                        time.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600 line-through"
+                      }`}
+                    >
+                      {time.time}
+                    </span>
+                    <button
+                      className={`text-xs px-2 py-1 rounded ${
+                        time.isActive
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-green-100 text-green-700 hover:bg-green-200"
+                      }`}
+                      onClick={async () => {
+                        try {
+                          await toggleTimeSlotStatus(
+                            id,
+                            dateAvailability.date,
+                            time.time,
+                            !time.isActive
+                          );
+                          toast.success(
+                            `Time slot ${!time.isActive ? "activated" : "deactivated"}`
+                          );
+                        } catch (slotError) {
+                          toast.error(slotError.message || "Failed to update time slot");
+                        }
+                      }}
+                    >
+                      {time.isActive ? "Deactivate" : "Activate"}
+                    </button>
                   </li>
                 ))}
               </ul>
             </div>
           </div>
         ))}
-      </div>
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
-            isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
-        >
-          {isActive ? "Active" : "Inactive"}
-        </span>
       </div>
     </div>
   );
@@ -114,10 +135,12 @@ const ActionDropdown = ({
   show,
   onClose,
   availabilityId,
+  availability,
   isActive,
   onActivate,
   onDeactivate,
   onDelete,
+  onEdit,
 }) => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
@@ -143,11 +166,14 @@ const ActionDropdown = ({
           onClick={() => handleAction(isActive ? onDeactivate : onActivate)}
         >
           <BiPowerOff className="mr-2" />
-          {isActive ? "Deactivate" : "Activate"}
+          {isActive ? "Deactivate All" : "Activate All"}
         </button>
         <button
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-          onClick={onClose}
+          onClick={() => {
+            onEdit(availability);
+            onClose();
+          }}
         >
           <AiOutlineEdit className="mr-2" />
           Edit

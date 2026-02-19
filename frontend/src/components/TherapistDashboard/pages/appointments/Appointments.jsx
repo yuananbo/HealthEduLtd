@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import useDataFetching from "../../../../hooks/useFech";
 import AppointmentTable from "./AppointmentTable";
-import AppointmentDetails from "./AppointmentDetails";
 import { FiSearch, FiFilter } from "react-icons/fi";
 import Loading from "../../../utilities/Loading";
 import Pagination from "../../../common/widgets/Pagination";
@@ -16,22 +15,28 @@ const Appointments = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedAppointments, setSelectedAppointments] = useState([]);
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   useEffect(() => {
     if (data && data.data) {
       let filtered = data.data;
 
       if (searchTerm) {
+        const query = searchTerm.toLowerCase();
         filtered = filtered.filter(
-          (appointment) =>
-            appointment.patient.firstName
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            appointment.patient.lastName
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            appointment.status.toLowerCase().includes(searchTerm.toLowerCase())
+          (appointment) => {
+            const patient = appointment.patient || {};
+            const firstName = (patient.firstName || "").toLowerCase();
+            const lastName = (patient.lastName || "").toLowerCase();
+            const status = (appointment.status || "").toLowerCase();
+            const service = (appointment.service || "").toLowerCase();
+
+            return (
+              firstName.includes(query) ||
+              lastName.includes(query) ||
+              status.includes(query) ||
+              service.includes(query)
+            );
+          }
         );
       }
 
@@ -68,24 +73,6 @@ const Appointments = () => {
   const handleBulkAction = (action) => {
     // Implement bulk action logic here
     console.log(`Performing ${action} on`, selectedAppointments);
-  };
-
-  const handleViewDetails = (appointmentId) => {
-    const appointment = filteredData.find((app) => app._id === appointmentId);
-    setSelectedAppointment(appointment);
-  };
-
-  const handleUpdateStatus = async (appointmentId, newStatus) => {
-    // This function is no longer needed as the status update is handled in the AppointmentDetails component
-    // However, we need to refetch the appointments data after a status update
-    await refetch();
-  };
-
-  const handleAddNote = async (appointmentId, note) => {
-    // Implement the logic to add a note to the appointment
-    console.log(`Adding note to appointment ${appointmentId}: ${note}`);
-    // After adding the note, you should refetch the appointments or update the local state
-    await refetch();
   };
   if (loading) {
     return <Loading />;
@@ -163,7 +150,6 @@ const Appointments = () => {
             selectedAppointments={selectedAppointments}
             onSelectAll={handleSelectAll}
             onSelect={handleSelect}
-            onViewDetails={handleViewDetails}
           />
           <Pagination
             currentPage={currentPage}
@@ -171,14 +157,6 @@ const Appointments = () => {
             onPageChange={handlePageChange}
           />
         </>
-      )}
-
-      {selectedAppointment && (
-        <AppointmentDetails
-          appointment={selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
-          onAddNote={handleAddNote}
-        />
       )}
     </div>
   );

@@ -108,7 +108,11 @@ const SignupFormTherapist = ({ API_ENDPOINT }) => {
       setCurrentStep(steps.length + 1);
     } catch (error) {
       console.error("Registration failed:", error);
-      alert(`Registration failed: ${error.message}`);
+      const apiMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error.message;
+      alert(`Registration failed: ${apiMessage}`);
     } finally {
       setLoading(false);
     }

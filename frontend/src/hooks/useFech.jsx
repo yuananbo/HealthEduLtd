@@ -64,11 +64,18 @@ const useDataFetching = (initialUrl) => {
 
   const fetchData = useCallback(
     async (newUrl = url) => {
+      if (!newUrl || typeof newUrl !== "string" || !newUrl.trim()) {
+        setError("Missing API endpoint");
+        return;
+      }
+
+      const token = currentUser?.data?.token || currentUser?.token;
       try {
         setLoading(true);
+        setError("");
         const response = await api.get(newUrl, {
           headers: {
-            Authorization: `Bearer ${currentUser.data.token}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         });
         setData(response.data);
@@ -82,15 +89,24 @@ const useDataFetching = (initialUrl) => {
   );
 
   useEffect(() => {
-    fetchData();
+    if (url) {
+      fetchData();
+    }
   }, [fetchData]);
 
   const refetch = useCallback(
     (newUrl) => {
-      setUrl(newUrl);
-      fetchData(newUrl);
+      const targetUrl = newUrl || url;
+      if (!targetUrl || typeof targetUrl !== "string" || !targetUrl.trim()) {
+        setError("Missing API endpoint");
+        return;
+      }
+      if (newUrl) {
+        setUrl(newUrl);
+      }
+      fetchData(targetUrl);
     },
-    [fetchData]
+    [fetchData, url]
   );
 
   return [loading, error, data, refetch];
