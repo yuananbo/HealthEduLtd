@@ -102,9 +102,16 @@ const SignupFormTherapist = ({ API_ENDPOINT }) => {
         },
       });
       console.log("Registration successful:", response);
-      alert(
-        "Account created successfully. Please check your email for verification."
-      );
+      const verifyLink = response?.data?.verifyLink;
+      if (verifyLink) {
+        alert(
+          `Account created, but email failed to send.\nUse this verification link:\n${verifyLink}`
+        );
+      } else {
+        alert(
+          "Account created successfully. Please check your email for verification."
+        );
+      }
       setCurrentStep(steps.length + 1);
     } catch (error) {
       console.error("Registration failed:", error);

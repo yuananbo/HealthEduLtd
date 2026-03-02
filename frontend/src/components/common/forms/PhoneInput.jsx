@@ -6,13 +6,15 @@ const CustomPhoneInput = ({
   labelText,
   labelFor,
   id,
-  inputStyle,
-  searchStyle,
-  dropdownStyle,
+  inputStyle = {},
+  searchStyle = {},
+  dropdownStyle = {},
+  isRequired = false,
+  isInvalid = false,
   ...props
 }) => {
   return (
-    <div className="">
+    <div>
       <label
         htmlFor={labelFor || id}
         className="block text-sm font-medium text-gray-700 mb-2"
@@ -22,33 +24,25 @@ const CustomPhoneInput = ({
       <PhoneInput
         id={id}
         prefix="+"
+        containerClass={`custom-phone-input ${isInvalid ? "is-invalid" : ""}`}
+        buttonClass="custom-phone-input__flag-button"
+        inputClass="custom-phone-input__field"
+        dropdownClass="custom-phone-input__dropdown"
+        searchClass="custom-phone-input__search"
+        enableSearch
+        countryCodeEditable={false}
+        disableCountryGuess
+        specialLabel=""
+        inputProps={{ required: isRequired, name: labelFor || id }}
         inputStyle={{
           width: "100%",
-          height: "40px",
-          borderColor: "rgb(209 213 219)",
-          backgroundColor: "white",
-          borderRadius: "0.375rem",
           ...inputStyle,
         }}
         searchStyle={{
-          borderColor: "rgb(209 213 219)",
-          boxShadow:
-            "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
-          borderRadius: "0.375rem",
-          backgroundColor: "white",
-          padding: "0.5rem",
-          width: "260px",
+          width: "100%",
           ...searchStyle,
         }}
         dropdownStyle={{
-          marginTop: "3.3rem",
-          position: "absolute",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          top: 0,
-          left: 0,
-          right: 0,
           ...dropdownStyle,
         }}
         {...props}

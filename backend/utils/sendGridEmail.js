@@ -486,7 +486,20 @@ const sendEmail = async ({
     console.log("Sending email with the following details:", msg);
     await sgMail.send(msg);
   } catch (error) {
-    console.error("sending email error", error);
+    const sendGridBody = error?.response?.body;
+    const sendGridErrors = Array.isArray(sendGridBody?.errors)
+      ? sendGridBody.errors.map((item) => item?.message).filter(Boolean)
+      : [];
+
+    console.error("sending email error", {
+      message: error?.message,
+      code: error?.code,
+      responseStatus: error?.code || error?.response?.statusCode,
+      sendGridErrors,
+      to: recipientEmail,
+      from: msg.from,
+      subject,
+    });
     throw new Error("Could not send email");
   }
 };
