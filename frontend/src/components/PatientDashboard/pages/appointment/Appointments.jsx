@@ -4,14 +4,19 @@ import AppointmentItem from "./AppointmentItem";
 import { Link } from "react-router-dom";
 import { FiSearch, FiFilter, FiCalendar, FiPlus } from "react-icons/fi";
 import Loading from "../../../utilities/Loading";
+import toast from "react-hot-toast";
+import api from "../../../../utils/api";
 
 const Appointments = () => {
-  const [loading, error, data] = useDataFetching("/patient/appointments");
+  const [loading, error, data, refetch] = useDataFetching(
+    "/patient/appointments?limit=50"
+  );
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedAppointments, setSelectedAppointments] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // console.log("filterexd", filteredData);
 
@@ -21,11 +26,21 @@ const Appointments = () => {
 
       if (searchTerm) {
         filtered = filtered.filter(
-          (appointment) =>
-            appointment.therapist
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            appointment.status.toLowerCase().includes(searchTerm.toLowerCase())
+          (appointment) => {
+            const therapistName =
+              typeof appointment?.therapist === "object" && appointment?.therapist
+                ? `${appointment.therapist.firstName || ""} ${
+                    appointment.therapist.lastName || ""
+                  } ${appointment.therapist.specialization || ""}`
+                : String(appointment?.therapist || "");
+
+            return (
+              therapistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              String(appointment?.status || "")
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase())
+            );
+          }
         );
       }
 
@@ -62,8 +77,57 @@ const Appointments = () => {
   };
 
   const handleBulkAction = (action) => {
-    // Implement bulk action logic here
-    console.log(`Performing ${action} on`, selectedAppointments);
+    if (action === "cancel") {
+      bulkCancelSelected();
+      return;
+    }
+    toast("Bulk action not implemented yet");
+  };
+
+  const bulkCancelSelected = async () => {
+    if (selectedAppointments.length === 0) return;
+    const confirm = window.confirm(
+      `Cancel ${selectedAppointments.length} selected appointment(s)?`
+    );
+    if (!confirm) return;
+
+    try {
+      setBulkLoading(true);
+      const results = await Promise.allSettled(
+        selectedAppointments.map((id) =>
+          api.patch(`/patient/appointments/${id}/cancel`)
+        )
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled")
+        .length;
+      const failed = results
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.reason);
+
+      if (successCount > 0) {
+        toast.success(`Cancelled ${successCount} appointment(s)`);
+      }
+      if (failed.length > 0) {
+        const firstMessage =
+          failed[0]?.response?.data?.message ||
+          failed[0]?.response?.data?.error ||
+          failed[0]?.message ||
+          "Some appointments could not be cancelled";
+        toast.error(
+          `Failed to cancel ${failed.length} appointment(s). ${firstMessage}`
+        );
+      }
+
+      setSelectedAppointments([]);
+      refetch();
+    } catch (e) {
+      toast.error(
+        e?.response?.data?.message || e?.message || "Bulk cancel failed"
+      );
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   if (loading) {
@@ -167,9 +231,10 @@ const Appointments = () => {
           <div className="flex gap-2">
             <button
               onClick={() => handleBulkAction("cancel")}
+              disabled={bulkLoading}
               className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
             >
-              Cancel Selected
+              {bulkLoading ? "Cancelling..." : "Cancel Selected"}
             </button>
             <button
               onClick={() => handleBulkAction("reschedule")}

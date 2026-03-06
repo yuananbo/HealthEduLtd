@@ -19,8 +19,9 @@ const cardVariants = {
 
 const services = [
   {
-    title: "Home Care Rehab",
-    description: "Rehabilitation services at home with scheduled visits.",
+    title: "Assisted Home Care",
+    description:
+      "Professional care at home: therapy, chronic care, mental health, and nutrition.",
     icon: FaHome,
     path: "/patient/home-care",
     color: "blue",

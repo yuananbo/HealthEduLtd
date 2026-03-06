@@ -11,7 +11,9 @@ const AvailableTimeSlots = ({
     (availability) => availability.date === selectedDate
   );
 
-  const timeSlots = selectedAvailability ? selectedAvailability.times : [];
+  const timeSlots = selectedAvailability
+    ? (selectedAvailability.times || []).filter((t) => Boolean(t?.isActive))
+    : [];
 
   const handleTimeSlotClick = (time) => {
     setSelectedSlot(time);
@@ -28,6 +30,7 @@ const AvailableTimeSlots = ({
           {timeSlots.map((time, index) => (
             <button
               key={index}
+              type="button"
               onClick={() => handleTimeSlotClick(time)}
               className={`
                 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ease-in-out
@@ -38,7 +41,6 @@ const AvailableTimeSlots = ({
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-500"
                 }
               `}
-              disabled={!time.isActive}
             >
               {time.time}
             </button>

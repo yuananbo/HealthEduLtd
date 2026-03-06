@@ -13,17 +13,27 @@ import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
 
+const HOME_CARE_SERVICES = [
+  "Physical Therapy",
+  "Occupational Therapy",
+  "Prosthetics and Orthotics",
+  "Family Medicine & Chronic Care",
+  "Mental Health",
+  "Nutrition",
+];
+
 const BookHomeCare = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { therapist } = location.state;
+  const therapist = location.state?.therapist;
+  const selectedHomeCareService = location.state?.selectedHomeCareService;
   const { currentUser } = useContext(UserContext);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [load, setLoad] = useState(false);
   const [formattedData, setFormattedData] = useState(null);
   const [formData, setFormData] = useState({
-    service: "Home Care Rehab",
+    service: selectedHomeCareService || "Physical Therapy",
     purpose: "",
     notes: "",
   });
@@ -34,9 +44,25 @@ const BookHomeCare = () => {
     street: "",
   });
 
-  const [loading, error, data] = useDataFetching(
-    `/therapist/availability/${therapist.id}`
+  const [loading, error, data, refetchAvailability] = useDataFetching(
+    therapist?.id ? `/therapist/availability/${therapist.id}` : null
   );
+
+  useEffect(() => {
+    if (!therapist) {
+      toast.error("Missing therapist details. Please select a therapist again.");
+      navigate("/patient/home-care");
+    }
+  }, [therapist, navigate]);
+
+  useEffect(() => {
+    if (
+      selectedHomeCareService &&
+      HOME_CARE_SERVICES.includes(selectedHomeCareService)
+    ) {
+      setFormData((prev) => ({ ...prev, service: selectedHomeCareService }));
+    }
+  }, [selectedHomeCareService]);
 
   // Pre-fill home address from patient profile if available
   useEffect(() => {
@@ -57,25 +83,13 @@ const BookHomeCare = () => {
     if (data && data.status === "success" && data.activeAvailability) {
       const formattedAvailabilities =
         data.activeAvailability.availabilities.map((availability) => ({
-          date: moment(availability.date).format("YYYY-MM-DD"),
+          // Treat availability.date as UTC date-only to avoid timezone shifting.
+          date: moment.utc(availability.date).format("YYYY-MM-DD"),
           times: availability.times,
         }));
       setFormattedData({ availabilities: formattedAvailabilities });
     }
   }, [data]);
-
-  useEffect(() => {
-    const pendingBooking = localStorage.getItem("pendingHomeCareBooking");
-    if (pendingBooking && formattedData) {
-      const { therapistId, date, time } = JSON.parse(pendingBooking);
-      updateAvailability(therapistId, date, time).then(() => {
-        updateLocalAvailability(date, time);
-        localStorage.removeItem("pendingHomeCareBooking");
-        toast.success("Payment successful. Home care appointment booked.");
-        navigate("/patient/payment-success-page");
-      });
-    }
-  }, [formattedData]);
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
@@ -93,59 +107,15 @@ const BookHomeCare = () => {
     });
   };
 
+  const handleServiceChange = (e) => {
+    setFormData((prev) => ({ ...prev, service: e.target.value }));
+  };
+
   const handleAddressChange = (e) => {
     setHomeAddress({
       ...homeAddress,
       [e.target.name]: e.target.value,
     });
-  };
-
-  const updateAvailability = async (therapistId, date, time) => {
-    try {
-      const formattedDate = moment(date).format("YYYY-MM-DD");
-      const formattedTime = time.length === 4 ? `0${time}` : time;
-      await api.put(
-        `/therapist/availability/${therapistId}`,
-        {
-          date: formattedDate,
-          time: formattedTime,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${currentUser.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    } catch (error) {
-      console.error(
-        "Error updating availability:",
-        error.response?.data?.message || error.message
-      );
-    }
-  };
-
-  const updateLocalAvailability = (date, time) => {
-    if (!formattedData) return;
-
-    const updatedAvailabilities = formattedData.availabilities.map(
-      (availability) => {
-        if (availability.date === date) {
-          return {
-            ...availability,
-            times: availability.times.map((t) => {
-              if (t.time === time) {
-                return { ...t, isActive: false };
-              }
-              return t;
-            }),
-          };
-        }
-        return availability;
-      }
-    );
-
-    setFormattedData({ availabilities: updatedAvailabilities });
   };
 
   const bookHomeCareAppointment = async () => {
@@ -179,30 +149,19 @@ const BookHomeCare = () => {
         response.data.paymentResponse &&
         response.data.paymentResponse.meta.authorization.redirect
       ) {
-        localStorage.setItem(
-          "pendingHomeCareBooking",
-          JSON.stringify({
-            therapistId: therapist.id,
-            date: moment(selectedDate).format("YYYY-MM-DD"),
-            time: selectedTime?.time,
-          })
-        );
-
         window.location.href =
           response.data.paymentResponse.meta.authorization.redirect;
       } else {
-        const formattedDate = moment(selectedDate).format("YYYY-MM-DD");
-        const formattedTime =
-          selectedTime?.time.length === 4
-            ? `0${selectedTime?.time}`
-            : selectedTime?.time;
-        await updateAvailability(therapist.id, formattedDate, formattedTime);
-        updateLocalAvailability(formattedDate, formattedTime);
         toast.success("Home care appointment booked successfully");
         navigate("/patient/payment-success-page");
       }
     } catch (err) {
       console.error("Error booking home care appointment:", err);
+      if (err?.response?.status === 409) {
+        // Slot was taken after the page loaded; refresh availability so UI hides it.
+        setSelectedTime(null);
+        await refetchAvailability();
+      }
       toast.error(
         err.response?.data?.error || "Error booking home care appointment"
       );
@@ -225,7 +184,9 @@ const BookHomeCare = () => {
     }
 
     if (!homeAddress.country || !homeAddress.city) {
-      toast.error("Please provide at least your country and city for the home address");
+      toast.error(
+        "Please provide at least your country and city for the home address"
+      );
       return;
     }
 
@@ -235,6 +196,7 @@ const BookHomeCare = () => {
   if (loading) return <Loading />;
 
   if (
+    !therapist ||
     !formattedData ||
     !formattedData?.availabilities ||
     formattedData?.availabilities.length === 0 ||
@@ -368,17 +330,27 @@ const BookHomeCare = () => {
               Appointment Details
             </h2>
             <div className="space-y-4">
-              <Input
-                handleChange={handleChange}
-                value={formData.service}
-                labelText="Service"
-                labelFor="service"
-                id="service"
-                name="service"
-                type="text"
-                isRequired={true}
-                placeholder="Type of service"
-              />
+              <div>
+                <label
+                  htmlFor="service"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Home Care Service *
+                </label>
+                <select
+                  id="service"
+                  name="service"
+                  value={formData.service}
+                  onChange={handleServiceChange}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+                >
+                  {HOME_CARE_SERVICES.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Input
                 handleChange={handleChange}
                 value={formData.purpose}

@@ -27,7 +27,7 @@ const BookAppointment = () => {
     purpose: "",
     notes: "",
   });
-  const [loading, error, data] = useDataFetching(
+  const [loading, error, data, refetchAvailability] = useDataFetching(
     `/therapist/availability/${therapist.id}`
   );
 
@@ -35,7 +35,7 @@ const BookAppointment = () => {
     if (data && data.status === "success" && data.activeAvailability) {
       const formattedAvailabilities =
         data.activeAvailability.availabilities.map((availability) => ({
-          date: moment(availability.date).format("YYYY-MM-DD"),
+          date: moment.utc(availability.date).format("YYYY-MM-DD"),
           times: availability.times,
         }));
       setFormattedData({ availabilities: formattedAvailabilities });
@@ -96,6 +96,10 @@ const BookAppointment = () => {
       }
     } catch (err) {
       console.error("Error booking appointment:", err);
+      if (err?.response?.status === 409) {
+        setSelectedTime(null);
+        await refetchAvailability();
+      }
       toast.error(err.response?.data?.message || "Error booking appointment");
     } finally {
       setLoad(false);

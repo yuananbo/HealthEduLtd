@@ -6,10 +6,28 @@ const AvailabilityDayPicker = ({ availabilities, onDateClick }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
 
+  const formatDate = (date) => {
+    // Use local calendar date (NOT UTC) to avoid timezone off-by-one bugs.
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   useEffect(() => {
-    const dates = availabilities.map(
-      (availability) => new Date(availability.date)
-    );
+    // Only mark a day as available if it has at least one active slot.
+    const dates = (availabilities || [])
+      .filter((availability) =>
+        (availability?.times || []).some((t) => Boolean(t?.isActive))
+      )
+      .map((availability) => {
+        // availability.date is expected to be YYYY-MM-DD (date-only)
+        if (typeof availability?.date === "string") {
+          const [y, m, d] = availability.date.split("-").map(Number);
+          if (y && m && d) return new Date(y, m - 1, d);
+        }
+        return new Date(availability.date);
+      });
     setAvailableDates(dates);
   }, [availabilities]);
 
@@ -18,10 +36,6 @@ const AvailabilityDayPicker = ({ availabilities, onDateClick }) => {
     if (onDateClick) {
       onDateClick(formatDate(date));
     }
-  };
-
-  const formatDate = (date) => {
-    return date.toISOString().split("T")[0];
   };
 
   const isDateAvailable = (date) => {

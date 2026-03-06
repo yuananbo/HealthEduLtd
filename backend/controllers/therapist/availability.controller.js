@@ -150,6 +150,9 @@ export const updateMyAvailability = asyncHandler(async (req, res) => {
 // Update date andtime availability for therapist when a patient books an appointment, change time slot status to false and if all times are booked, show no availability
 export const updateAvailabilityTimeSlot = async (req, res) => {
   try {
+    if (req.user?.userType !== "therapist") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
     const { id } = req.params; // This is the therapist ID
     const { date, time } = req.body;
 

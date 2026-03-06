@@ -24,6 +24,15 @@ async function processPayment({
   email,
   req,
 }) {
+  // For local development/demo, skip external payment provider entirely.
+  if (process.env.NODE_ENV !== "production") {
+    return {
+      status: "success",
+      message: "Payment disabled in non-production environment",
+      meta: { authorization: {} },
+    };
+  }
+
   const protocol = req.protocol;
   const host = req.get("host");
 

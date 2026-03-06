@@ -481,7 +481,11 @@ const sendEmail = async ({
 
   try {
     if (!sendGridApiKey) {
-      throw new Error("SENDGRID_API_KEY is not configured");
+      console.warn(
+        "SENDGRID_API_KEY is not configured. Skipping email send.",
+        { to: recipientEmail, subject }
+      );
+      return { skipped: true };
     }
     console.log("Sending email with the following details:", msg);
     await sgMail.send(msg);
@@ -500,6 +504,10 @@ const sendEmail = async ({
       from: msg.from,
       subject,
     });
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Skipping email failure in non-production environment.");
+      return { skipped: true, error: error?.message, sendGridErrors };
+    }
     throw new Error("Could not send email");
   }
 };
@@ -526,11 +534,19 @@ const sendPasswordResetEmail = async (email, resetLink) => {
 
   try {
     if (!sendGridApiKey) {
-      throw new Error("SENDGRID_API_KEY is not configured");
+      console.warn(
+        "SENDGRID_API_KEY is not configured. Skipping password reset email.",
+        { to: email }
+      );
+      return { skipped: true };
     }
     await sgMail.send(msg);
   } catch (error) {
     console.error("Error sending email:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Skipping password reset email failure in non-production.");
+      return { skipped: true, error: error?.message };
+    }
     throw new Error("Could not send email");
   }
 };
