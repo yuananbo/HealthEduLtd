@@ -1,3 +1,20 @@
+/**
+ * Design Pattern: Service Layer / Facade
+ *
+ * Why used in this module:
+ * - Availability and time-slot rules (create, query, reserve, release, normalize) are shared by
+ *   multiple HTTP controllers and should live in one domain-focused place.
+ *
+ * What problem it solves:
+ * - Prevents duplicated/contradictory logic across controllers (date-only handling, slot toggling,
+ *   conflict checks).
+ * - Reduces coupling between the HTTP layer and MongoDB/Mongoose persistence details.
+ *
+ * How it improves extensibility/maintainability:
+ * - New scheduling rules (buffers, max bookings/day, expiry, provider policies) can be added here
+ *   without modifying many controllers.
+ * - Makes booking/cancellation behavior easier to test and reason about.
+ */
 import moment from "moment";
 import Availability from "../models/availability.model.js";
 

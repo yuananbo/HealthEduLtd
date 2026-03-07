@@ -1,3 +1,20 @@
+/**
+ * Design Pattern: Strategy (runtime policy selection)
+ *
+ * Why used in this module:
+ * - Email delivery is important, but should not block core flows in non-production environments.
+ * - The module selects behavior based on configuration/runtime context:
+ *   - Configured (production-like): send via SendGrid
+ *   - Not configured / limited (dev/demo): safely skip and return a "skipped" result
+ *
+ * What problem it solves:
+ * - Prevents appointment booking and monitoring flows from failing due to email provider setup
+ *   issues (missing API key, credit limits, transient errors).
+ *
+ * How it improves extensibility/maintainability:
+ * - Keeps provider-specific logic isolated; swapping to another provider (SMTP/Mailgun/queue) is
+ *   localized to this module rather than spread across services/controllers.
+ */
 import { config } from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
