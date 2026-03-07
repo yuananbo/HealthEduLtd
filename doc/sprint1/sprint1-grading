@@ -1,0 +1,109 @@
+# Sprint 1 Marking Scheme
+
+**Team Name:** 111 
+Amy Zhao
+Anbo Yuan
+Yixi Li
+Jiaqi Huang
+Ruoxin Lei
+---
+
+## Version Control (max 20 marks)
+
+- Consistent Usage of Git (10 pt):
+   - 4/4 pts: Regular and consistent commits demonstrating incremental progress in the project.
+   - 4/4 pt:  Demonstrated proficiency in basic Git commands ((e.g., commit, push, pull, merge) and usage based on the contribution guidelines described by the team in their README.
+   - 2/2 pts: Meaningful commit messages that convey the purpose of each change.
+
+- Branches/Naming/Organization (10 pt)
+   - 2/4 pts: Proper utilization of branches for feature development, bug fixes, etc. Should have feature branches for each user story that differs significantly in logic.
+   - 0/4 pts: Use of Pull Requests and/or avoidance of direct uploads and merging zip files.
+                 ● Should not directly commit each change to the main branch.
+                 ● Should ideally merge branches using pull request feature on GitHub.
+                 ● Should not manually merge zips from different branches in one local repo
+   - 2/2 pts: Clear and meaningful branch naming conventions that reflect the purpose of the branch.
+
+Version Control Total Mark: 14 / 20
+
+---
+## Planning Meetings (RPM.md, sprint1.md) (max 10 marks)
+
+  - RPM.md (Release Planning Meetings) (max 5 marks)
+What’s missing (each one costs marks here):
+Included features list (not present in RPM format)
+Excluded features list (not present)
+Bug fixes section (you mention bug fixes happened, but not as a scoped release item list)
+Non-functional requirements (not present)
+
+
+Dependencies & limitations for the release aren’t clearly stated as a release-scope section (you mention dependencies, but not as “release dependencies/limitations”)
+That’s why this reads more like a sprint status report than a release planning meeting document per the rubric.
+Your Mark: 1/5
+    
+  - product.md no changes since its optional (5/5 marks)
+
+Planning Meetings Total Mark: 6 / 10
+
+
+## BackLog Management (20 pts)
+      - (-1) Should use subtask/child issues feature to break down user stories instead of creating a large pool of unclassified tasks/user stories.
+      - (-2) Each task in Sprint 1 has been assigned story estimation points.
+      - (-1 as some where done outside the sprint) All tasks/user stories in Sprint 1 should be completed.
+
+Backlog Management Total Mark: 16 / 20
+
+---
+## Team Communication (max 11 marks)
+---
+## Daily Stand-ups (max 6 marks)
+-1 All teams members have sent their updates in the channel. 
+  Daily Stand-ups Total Mark: 5 / 6
+
+- Sprint Retrospective (max 5 marks)
+ Sprint Retro Total Mark: 5 / 5
+
+Team Communication Mark: 10 / 11
+
+---
+## System Design (PDF or MD file or another suitable format) (max 15 marks) 
+
+Groups using React + Express and not relying on classes. Components can be treated as classes
+    
+  - CRC Cards [or equivalent, if the team is not using CRC) (max 6 marks)
+    - (-2 marks) There are collaborator naming / matching issues: several cards list collaborators that don’t appear as CRC cards themselves (e.g., references like AvailabilityService, SavedItem, generic “API service layer”, “Appointment controllers”, “all protected controllers”, etc.). 
+
+    Your Mark: 4
+
+  - Software Architecture Diagram (max 9 marks)
+    Your Mark: 9
+
+System Design Total Mark: 13  / 15
+
+
+---
+## Sprint Demo (Max 17 marks) 
+
+  - Attendance (max 2.5 marks)
+    - 2.5 marks = full team is present
+
+  - Working software (max 8 marks)
+    - 8 marks = All 2 or 3 features presented work flawlessly
+
+  - UI Presentation (max 4 marks)
+    - 2 marks = one or more errors identified by the demo TA
+      - Small bug (internal error if no region present) , 
+      - Video error (perhaps youtube issue_
+
+
+  - Presentation (max 2.5 marks)
+    - 2.5 marks = Overall fluency in demonstrating software, speaking, and presenting ideas
+
+Your Mark: 15 / 17
+
+---
+
+
+## Total Mark
+
+74 / 93
+
