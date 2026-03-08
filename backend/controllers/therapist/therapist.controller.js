@@ -220,6 +220,11 @@ export const loginTherapist = async (req, res) => {
       });
     }
 
+    await Therapist.updateOne(
+      { _id: therapist._id },
+      { $set: { lastLogin: new Date() } }
+    );
+
     // Send a token to the client
     const user = await Therapist.findByIdAndUpdate(therapist._id).select(
       "-password"

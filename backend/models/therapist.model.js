@@ -112,6 +112,9 @@ const therapistSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    lastLogin: {
+      type: Date,
+    },
     ratings: [
       {
         type: mongoose.Schema.Types.ObjectId,

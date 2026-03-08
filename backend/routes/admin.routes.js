@@ -6,12 +6,17 @@ import {
   createAdmin,
   createSuperAdmin,
   disapproveTherapist,
+  getAdminContents,
+  getAdminUserById,
+  getAdminUsers,
   getAllTherapists,
+  getDashboardSummary,
   getTherapistAppointments,
   getTherapistById,
   getTherapistStats,
   loginAdmin,
   logoutAdmin,
+  updateAdminUserStatus,
 } from "../controllers/admin/admin.controller.js";
 import validateToken from "../middleware/validateToken.js";
 import { checkRouteIsEnabled } from "../middleware/checkRouteIsEnabled.js";
@@ -35,6 +40,11 @@ router.route("/login").post(setupLimiter, loginAdmin);
 // Protected admin routes
 router.use(validateToken);
 router.route("/create").post(checkPasswordStrength, createAdmin);
+router.route("/dashboard/summary").get(getDashboardSummary);
+router.route("/users").get(getAdminUsers);
+router.route("/users/:id").get(getAdminUserById);
+router.route("/users/:id/status").patch(updateAdminUserStatus);
+router.route("/content").get(getAdminContents);
 router.route("/therapists").get(getAllTherapists);
 router.route("/therapists/:id").get(getTherapistById);
 router.route("/therapists/:id/stats").get(getTherapistStats);

@@ -4,8 +4,31 @@ import { fileURLToPath } from "url";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import AdminService from "../../services/admin.service.js";
 import Therapist from "../../models/therapist.model.js";
+import Patient from "../../models/patient.model.js";
+import Admin from "../../models/admin.model.js";
+import Appointment from "../../models/appointment.model.js";
+import Payment from "../../models/payment.model.js";
+import EducationContent from "../../models/educationContent.model.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const ensureAdminAccess = (admin) => {
+  return (
+    admin.role === "super-admin" ||
+    admin.role === "admin" ||
+    admin.userType === "admin"
+  );
+};
+
+const normalizeUserStatus = (user, userType) => {
+  if (userType === "patient") {
+    return user.isActive === false ? "inactive" : "active";
+  }
+  if (userType === "therapist") {
+    return user.active ? (user.isVerified ? "active" : "pending") : "inactive";
+  }
+  return user.isActive ? "active" : "inactive";
+};
 
 export const createSuperAdmin = asyncHandler(async (req, res) => {
   console.log("Controller: createSuperAdmin function called");
@@ -24,12 +47,17 @@ export const createSuperAdmin = asyncHandler(async (req, res) => {
 
     process.env.ENABLE_SETUP_ROUTES = "false";
 
-    const envFilePath = path.resolve(__dirname, "../../../.env");
+    // Keep setup-route toggle in backend/.env (same env file used by backend app)
+    const envFilePath = path.resolve(__dirname, "../../.env");
     let envFileContent = await fs.promises.readFile(envFilePath, "utf8");
-    envFileContent = envFileContent.replace(
-      /ENABLE_SETUP_ROUTES=true/,
-      "ENABLE_SETUP_ROUTES=false"
-    );
+    if (/^ENABLE_SETUP_ROUTES=/m.test(envFileContent)) {
+      envFileContent = envFileContent.replace(
+        /^ENABLE_SETUP_ROUTES=.*/m,
+        "ENABLE_SETUP_ROUTES=false"
+      );
+    } else {
+      envFileContent += "\nENABLE_SETUP_ROUTES=false\n";
+    }
     await fs.promises.writeFile(envFilePath, envFileContent);
 
     res.status(201).json({
@@ -100,11 +128,7 @@ export const getAllTherapists = async (req, res) => {
   try {
     const admin = req.user;
 
-    if (
-      admin.role !== "super-admin" &&
-      admin.role !== "admin" &&
-      admin.userType !== "admin"
-    ) {
+    if (!ensureAdminAccess(admin)) {
       return res.status(403).json({
         message:
           "Unauthorized: You do not have permission to access this resource",
@@ -143,11 +167,7 @@ export const getTherapistById = asyncHandler(async (req, res) => {
     const admin = req.user;
     const therapistId = req.params.id;
 
-    if (
-      admin.role !== "super-admin" &&
-      admin.role !== "admin" &&
-      admin.userType !== "admin"
-    ) {
+    if (!ensureAdminAccess(admin)) {
       return res.status(403).json({
         message:
           "Unauthorized: You do not have permission to access this resource",
@@ -163,6 +183,492 @@ export const getTherapistById = asyncHandler(async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
+});
+
+export const getDashboardSummary = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const [bookings, successfulPayments, activePatients, pendingTherapists] =
+    await Promise.all([
+      Appointment.countDocuments({}),
+      Payment.aggregate([
+        { $match: { status: "success" } },
+        {
+          $group: {
+            _id: "$currency",
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
+      Appointment.distinct("patient", {
+        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      }),
+      Therapist.countDocuments({ isVerified: false }),
+    ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      bookings,
+      revenue: successfulPayments,
+      activePatients: activePatients.length,
+      pendingTherapists,
+    },
+  });
+});
+
+export const getAdminUsers = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const {
+    search = "",
+    userType = "all",
+    status = "all",
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    page = 1,
+    limit = 10,
+  } = req.query;
+
+  const [patients, therapists, admins] = await Promise.all([
+    Patient.find({})
+      .select(
+        "firstName lastName email phoneNumber userType isActive lastLogin createdAt updatedAt"
+      )
+      .lean(),
+    Therapist.find({})
+      .select(
+        "firstName lastName email phoneNumber userType isVerified active lastLogin createdAt updatedAt"
+      )
+      .lean(),
+    Admin.find({})
+      .select(
+        "firstName lastName email phoneNumber userType role isActive lastLogin createdAt updatedAt"
+      )
+      .lean(),
+  ]);
+
+  const normalizedUsers = [
+    ...patients.map((item) => ({
+      id: item._id,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      name: `${item.firstName} ${item.lastName}`,
+      email: item.email,
+      phoneNumber: item.phoneNumber || "",
+      userType: "patient",
+      status: normalizeUserStatus(item, "patient"),
+      lastLoginAt: item.lastLogin || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })),
+    ...therapists.map((item) => ({
+      id: item._id,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      name: `${item.firstName} ${item.lastName}`,
+      email: item.email,
+      phoneNumber: item.phoneNumber || "",
+      userType: "therapist",
+      status: normalizeUserStatus(item, "therapist"),
+      lastLoginAt: item.lastLogin || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })),
+    ...admins.map((item) => ({
+      id: item._id,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      name: `${item.firstName} ${item.lastName}`,
+      email: item.email,
+      phoneNumber: item.phoneNumber || "",
+      userType: item.role || item.userType || "admin",
+      status: normalizeUserStatus(item, "admin"),
+      lastLoginAt: item.lastLogin || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })),
+  ];
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredUsers = normalizedUsers.filter((item) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      `${item.name} ${item.email}`.toLowerCase().includes(normalizedSearch);
+    const matchesUserType =
+      userType === "all" || item.userType === userType;
+    const matchesStatus = status === "all" || item.status === status;
+
+    return matchesSearch && matchesUserType && matchesStatus;
+  });
+
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
+  const sortedUsers = filteredUsers.sort((left, right) => {
+    if (sortBy === "name") {
+      return left.name.localeCompare(right.name) * sortDirection;
+    }
+    if (sortBy === "email") {
+      return left.email.localeCompare(right.email) * sortDirection;
+    }
+    return (
+      (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()) *
+      sortDirection
+    );
+  });
+
+  const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+  const limitNumber = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+  const total = sortedUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / limitNumber));
+  const startIndex = (pageNumber - 1) * limitNumber;
+  const paginatedUsers = sortedUsers.slice(startIndex, startIndex + limitNumber);
+
+  res.status(200).json({
+    success: true,
+    count: paginatedUsers.length,
+    total,
+    currentPage: pageNumber,
+    totalPages,
+    filters: {
+      search,
+      userType,
+      status,
+      sortBy,
+      sortOrder,
+    },
+    data: paginatedUsers,
+  });
+});
+
+export const getAdminUserById = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { id } = req.params;
+  const requestedUserType = req.query.userType;
+
+  if (!id) {
+    return res.status(400).json({ message: "User id is required" });
+  }
+
+  const getPatientPayload = async () => {
+    const patient = await Patient.findById(id)
+      .select("-password")
+      .lean();
+
+    if (!patient) {
+      return null;
+    }
+
+    const appointmentCount = await Appointment.countDocuments({ patient: patient._id });
+
+    return {
+      id: patient._id,
+      userType: "patient",
+      fullName: `${patient.firstName} ${patient.lastName}`,
+      basicInfo: {
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        email: patient.email,
+        phoneNumber: patient.phoneNumber,
+        alternativePhoneNumber: patient.guardianPhoneNumber || "",
+        profilePicture: patient.profilePicture || "",
+        address: patient.address || {},
+        userType: "patient",
+      },
+      accountInfo: {
+        status: normalizeUserStatus(patient, "patient"),
+        isActive: patient.isActive !== false,
+        isVerified: true,
+        createdAt: patient.createdAt,
+        updatedAt: patient.updatedAt,
+        lastLoginAt: patient.lastLogin || null,
+      },
+      businessInfo: {
+        patientId: patient.patientId,
+        appointmentCount,
+        savedContentCount: patient.savedEducationContents?.length || 0,
+        gender: patient.gender,
+        dateOfBirth: patient.dateOfBirth,
+        age: patient.age,
+        height: patient.height,
+        weight: patient.weight,
+        bloodType: patient.bloodType,
+        medicalHistory: patient.medicalHistory || [],
+      },
+    };
+  };
+
+  const getTherapistPayload = async () => {
+    const therapist = await Therapist.findById(id)
+      .select("-password")
+      .lean();
+
+    if (!therapist) {
+      return null;
+    }
+
+    const appointmentCount = await Appointment.countDocuments({
+      therapist: therapist._id,
+    });
+
+    return {
+      id: therapist._id,
+      userType: "therapist",
+      fullName: `${therapist.firstName} ${therapist.lastName}`,
+      basicInfo: {
+        firstName: therapist.firstName,
+        lastName: therapist.lastName,
+        email: therapist.email,
+        phoneNumber: therapist.phoneNumber,
+        alternativePhoneNumber: therapist.alternativePhoneNumber || "",
+        profilePicture: therapist.profilePicture || "",
+        address: therapist.address || {},
+        userType: "therapist",
+      },
+      accountInfo: {
+        status: normalizeUserStatus(therapist, "therapist"),
+        isActive: therapist.active,
+        isVerified: therapist.isVerified,
+        createdAt: therapist.createdAt,
+        updatedAt: therapist.updatedAt,
+        lastLoginAt: therapist.lastLogin || null,
+      },
+      businessInfo: {
+        therapistId: therapist.therapistId,
+        profession: therapist.profession,
+        specialization: therapist.specialization,
+        bio: therapist.bio,
+        numOfYearsOfExperience: therapist.numOfYearsOfExperience,
+        licenseNumber: therapist.licenseNumber,
+        licenseDocument: therapist.licenseDocument || "",
+        cv: therapist.cv || "",
+        appointmentCount,
+        documentUploadStatus: {
+          hasProfilePicture: Boolean(therapist.profilePicture),
+          hasCv: Boolean(therapist.cv),
+          hasLicenseDocument: Boolean(therapist.licenseDocument),
+        },
+      },
+    };
+  };
+
+  const getAdminPayload = async () => {
+    const targetAdmin = await Admin.findById(id)
+      .select("-password")
+      .lean();
+
+    if (!targetAdmin) {
+      return null;
+    }
+
+    return {
+      id: targetAdmin._id,
+      userType: targetAdmin.role || "admin",
+      fullName: `${targetAdmin.firstName} ${targetAdmin.lastName}`,
+      basicInfo: {
+        firstName: targetAdmin.firstName,
+        lastName: targetAdmin.lastName,
+        email: targetAdmin.email,
+        phoneNumber: targetAdmin.phoneNumber || "",
+        alternativePhoneNumber: "",
+        profilePicture: targetAdmin.profilePicture || "",
+        address: {},
+        userType: targetAdmin.role || "admin",
+      },
+      accountInfo: {
+        status: normalizeUserStatus(targetAdmin, "admin"),
+        isActive: targetAdmin.isActive,
+        isVerified: true,
+        createdAt: targetAdmin.createdAt,
+        updatedAt: targetAdmin.updatedAt,
+        lastLoginAt: targetAdmin.lastLogin || null,
+      },
+      businessInfo: {
+        adminId: targetAdmin.admindId,
+        role: targetAdmin.role,
+        permissions: targetAdmin.permissions || [],
+      },
+    };
+  };
+
+  let payload = null;
+  if (requestedUserType === "patient") {
+    payload = await getPatientPayload();
+  } else if (requestedUserType === "therapist") {
+    payload = await getTherapistPayload();
+  } else if (requestedUserType === "admin" || requestedUserType === "super-admin") {
+    payload = await getAdminPayload();
+  } else {
+    payload =
+      (await getPatientPayload()) ||
+      (await getTherapistPayload()) ||
+      (await getAdminPayload());
+  }
+
+  if (!payload) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: payload,
+  });
+});
+
+export const updateAdminUserStatus = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { id } = req.params;
+  const { status, userType } = req.body;
+  const allowedStatuses = ["active", "inactive", "pending"];
+
+  if (!status || !allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      message: "Status must be one of active, inactive, or pending",
+    });
+  }
+
+  if (!userType) {
+    return res.status(400).json({ message: "userType is required" });
+  }
+
+  if ((userType === "patient" || userType === "admin") && status === "pending") {
+    return res.status(400).json({
+      message: "Pending status is only supported for therapists",
+    });
+  }
+
+  let updatedUser = null;
+
+  if (userType === "patient") {
+    updatedUser = await Patient.findByIdAndUpdate(
+      id,
+      { isActive: status === "active" },
+      { new: true }
+    ).select("-password");
+  } else if (userType === "therapist") {
+    const existingTherapist = await Therapist.findById(id).select("-password");
+
+    if (!existingTherapist) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (status === "active") {
+      const approvalResult = await AdminService.approveTherapistAccount(
+        admin._id,
+        id,
+        req
+      );
+      updatedUser = approvalResult.therapist;
+    } else if (status === "inactive") {
+      if (existingTherapist.isVerified) {
+        const deactivationResult = await AdminService.deactivateTherapistAccount(
+          admin._id,
+          id,
+          req
+        );
+        updatedUser = deactivationResult.therapist;
+      } else {
+        updatedUser = await Therapist.findByIdAndUpdate(
+          id,
+          { active: false, isVerified: false },
+          { new: true }
+        ).select("-password");
+      }
+    } else if (status === "pending") {
+      updatedUser = await Therapist.findByIdAndUpdate(
+        id,
+        {
+          active: true,
+          isVerified: false,
+        },
+        { new: true }
+      ).select("-password");
+    }
+  } else if (userType === "admin" || userType === "super-admin") {
+    if (status === "inactive") {
+      if (admin._id.toString() === id) {
+        return res.status(400).json({
+          message: "You cannot deactivate your own admin account",
+        });
+      }
+
+      if (userType === "super-admin") {
+        const activeSuperAdmins = await Admin.countDocuments({
+          role: "super-admin",
+          isActive: true,
+        });
+
+        if (activeSuperAdmins <= 1) {
+          return res.status(400).json({
+            message: "You cannot deactivate the last active super-admin",
+          });
+        }
+      }
+    }
+
+    updatedUser = await Admin.findByIdAndUpdate(
+      id,
+      { isActive: status === "active" },
+      { new: true }
+    ).select("-password");
+  } else {
+    return res.status(400).json({ message: "Unsupported userType" });
+  }
+
+  if (!updatedUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User status updated successfully",
+    data: {
+      id: updatedUser._id,
+      userType,
+      status: normalizeUserStatus(updatedUser, userType),
+    },
+  });
+});
+
+export const getAdminContents = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const contentRows = await EducationContent.find({})
+    .select("title topic type sourceName isPublished updatedAt createdAt")
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  res.status(200).json({
+    success: true,
+    count: contentRows.length,
+    data: contentRows,
+  });
 });
 
 // approve therapist account by admin
