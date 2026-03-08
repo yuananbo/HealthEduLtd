@@ -17,13 +17,20 @@ import validateToken from "../middleware/validateToken.js";
 import {
   createAppointment,
   getAppointments,
+  cancelAppointment,
   rescheduleAppointment,
 } from "../controllers/patient/appointment.controller.js";
 import {
   getEducationContentByTopic,
   saveEducationContent,
   getSavedEducationContent,
+  submitQuestionnaire,
 } from "../controllers/patient/education.controller.js";
+import {
+  getMyDailyCheckIns,
+  getMyLatestDailyCheckIn,
+  upsertDailyCheckIn,
+} from "../controllers/patient/monitoring.controller.js";
 import { getAppointmentDetails } from "../controllers/therapist/appointment.controller.js";
 import validateResetToken from "../middleware/validateResetToken.js";
 
@@ -66,6 +73,7 @@ router
   .route("/appointments/:_id")
   .get(getAppointmentDetails)
   .put(rescheduleAppointment);
+router.patch("/appointments/:_id/cancel", cancelAppointment);
 router.get("/payment-success-page", (req, res) => {
   res.send("Payment successful and appointment updated!");
 });
@@ -74,6 +82,7 @@ router.route("/therapists").get(getAllVerifiedTherapists);
 router.get("/education/content", getEducationContentByTopic);
 router.post("/education/save", saveEducationContent);
 router.get("/education/saved", getSavedEducationContent);
+router.post("/education/questionnaire", submitQuestionnaire);
 
 router.get("/profile", (req, res) => {
   res.json(req.user);
@@ -83,6 +92,13 @@ router
   .patch(upload.fields([{ name: "profilePicture" }]), editPatientProfile);
 
 router.post("/logout", logoutPatient);
+
+// Monitoring / daily check-ins
+router
+  .route("/monitoring/checkins")
+  .get(getMyDailyCheckIns)
+  .post(upsertDailyCheckIn);
+router.get("/monitoring/checkins/latest", getMyLatestDailyCheckIn);
 
 // add medicals
 router

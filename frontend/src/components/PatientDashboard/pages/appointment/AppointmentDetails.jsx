@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   FiCalendar,
   FiClock,
@@ -15,12 +15,15 @@ import Loading from "../../../utilities/Loading";
 import RescheduleAppointment from "./RescheduleAppointment";
 import Input from "../../../common/forms/Input";
 import Button from "../../../common/Button";
+import toast from "react-hot-toast";
+import api from "../../../../utils/api";
 
 const AppointmentDetails = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const { id } = useParams();
+  const navigate = useNavigate();
   const {
     appointment,
     loading: appointmentLoading,
@@ -35,9 +38,25 @@ const AppointmentDetails = () => {
     return <Loading />;
   }
 
-  const handleCancel = () => {
-    // Implement cancel logic
-    console.log("Appointment cancelled");
+  const handleCancel = async () => {
+    try {
+      if (!id) return;
+      const confirm = window.confirm(
+        "Cancel this appointment? This action cannot be undone."
+      );
+      if (!confirm) return;
+
+      await api.patch(`/patient/appointments/${id}/cancel`);
+      toast.success("Appointment cancelled");
+      navigate("/patient/appointments");
+    } catch (e) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Failed to cancel appointment";
+      toast.error(message);
+    }
   };
 
   const handleReschedule = () => {

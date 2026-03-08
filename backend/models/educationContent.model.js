@@ -9,6 +9,7 @@ const educationContentSchema = new mongoose.Schema(
         "exercises",
         "nutrition",
         "disability-prevention",
+        "child-disability-detection",
       ],
       required: true,
       index: true,

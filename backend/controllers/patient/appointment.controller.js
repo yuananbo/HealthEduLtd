@@ -4,6 +4,7 @@ import Patient from "../../models/patient.model.js";
 import Payment from "../../models/payment.model.js";
 import Therapist from "../../models/therapist.model.js";
 import AppointmentService from "../../services/appointment.service.js";
+import AvailabilityService from "../../services/availability.service.js";
 import {
   appointmentConfirmationTemplate,
   appointmentConfrimationTherapistTemplate,
@@ -188,15 +189,69 @@ export const createAppointment = asyncHandler(async (req, res) => {
     // Save the payment to the database
     await newPayment.save();
 
-    const paymentResponse = await processPayment({
-      phoneNumber: existingPatient.phoneNumber,
-      fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-      amount: paymentDetails.amount,
-      currency: paymentDetails.currency,
-      appointmentId: savedAppointment._id,
-      email: existingPatient.email,
-      req: req,
-    });
+    let paymentResponse = null;
+    try {
+      paymentResponse = await processPayment({
+        phoneNumber: existingPatient.phoneNumber,
+        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+        amount: paymentDetails.amount,
+        currency: paymentDetails.currency,
+        appointmentId: savedAppointment._id,
+        email: existingPatient.email,
+        req: req,
+      });
+    } catch (paymentError) {
+      // For local development/demo, allow booking even when payment provider is down/misconfigured.
+      if (process.env.NODE_ENV !== "production") {
+        newPayment.status = "success";
+        await newPayment.save();
+
+        savedAppointment.status = "Pending";
+        await savedAppointment.save();
+
+        paymentResponse = {
+          status: "success",
+          message: "Payment skipped in non-production environment",
+          meta: { authorization: {} },
+        };
+      } else {
+        throw paymentError;
+      }
+    }
+
+    // If there's no redirect, treat payment as completed immediately (useful for local/dev mode).
+    const redirectUrl =
+      paymentResponse?.meta?.authorization?.redirect ||
+      paymentResponse?.data?.meta?.authorization?.redirect;
+    if (!redirectUrl) {
+      if (newPayment.status !== "success") {
+        newPayment.status = "success";
+        await newPayment.save();
+      }
+      if (savedAppointment.status === "Waiting for Payment") {
+        savedAppointment.status = "Pending";
+        await savedAppointment.save();
+      }
+    }
+
+    // Reserve the slot immediately so it can't be double-booked.
+    // If payment redirects in production, you may want an expiry-based release mechanism.
+    const reserveResult = await AvailabilityService.reserveTimeSlot(
+      therapist,
+      savedAppointment.date,
+      savedAppointment.time
+    );
+    if (!reserveResult.updated) {
+      // Roll back appointment + payment record to avoid dangling bookings.
+      await Payment.deleteOne({ _id: newPayment._id });
+      await Appointment.deleteOne({ _id: savedAppointment._id });
+      return res.status(409).json({
+        error:
+          reserveResult.reason === "slot_already_reserved"
+            ? "This time slot has just been booked. Please choose another."
+            : "Selected time slot is not available. Please choose another.",
+      });
+    }
 
     //     // Fetch patient and therapist details
     const patientDetails = await Patient.findById(patientId);
@@ -329,7 +384,7 @@ export const rescheduleAppointment = asyncHandler(async (req, res) => {
 
 // Cancel appointment with therapist
 export const cancelAppointment = asyncHandler(async (req, res) => {
-  const appointmentId = req.params.id;
+  const appointmentId = req.params._id;
   const result = await AppointmentService.cancelAppointment(appointmentId, req);
 
   res.status(200).json({

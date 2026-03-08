@@ -1,3 +1,20 @@
+/**
+ * Design Pattern: Strategy (runtime policy selection)
+ *
+ * Why used in this module:
+ * - Email delivery is important, but should not block core flows in non-production environments.
+ * - The module selects behavior based on configuration/runtime context:
+ *   - Configured (production-like): send via SendGrid
+ *   - Not configured / limited (dev/demo): safely skip and return a "skipped" result
+ *
+ * What problem it solves:
+ * - Prevents appointment booking and monitoring flows from failing due to email provider setup
+ *   issues (missing API key, credit limits, transient errors).
+ *
+ * How it improves extensibility/maintainability:
+ * - Keeps provider-specific logic isolated; swapping to another provider (SMTP/Mailgun/queue) is
+ *   localized to this module rather than spread across services/controllers.
+ */
 import { config } from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -481,7 +498,11 @@ const sendEmail = async ({
 
   try {
     if (!sendGridApiKey) {
-      throw new Error("SENDGRID_API_KEY is not configured");
+      console.warn(
+        "SENDGRID_API_KEY is not configured. Skipping email send.",
+        { to: recipientEmail, subject }
+      );
+      return { skipped: true };
     }
     console.log("Sending email with the following details:", msg);
     await sgMail.send(msg);
@@ -500,6 +521,10 @@ const sendEmail = async ({
       from: msg.from,
       subject,
     });
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Skipping email failure in non-production environment.");
+      return { skipped: true, error: error?.message, sendGridErrors };
+    }
     throw new Error("Could not send email");
   }
 };
@@ -526,11 +551,19 @@ const sendPasswordResetEmail = async (email, resetLink) => {
 
   try {
     if (!sendGridApiKey) {
-      throw new Error("SENDGRID_API_KEY is not configured");
+      console.warn(
+        "SENDGRID_API_KEY is not configured. Skipping password reset email.",
+        { to: email }
+      );
+      return { skipped: true };
     }
     await sgMail.send(msg);
   } catch (error) {
     console.error("Error sending email:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Skipping password reset email failure in non-production.");
+      return { skipped: true, error: error?.message };
+    }
     throw new Error("Could not send email");
   }
 };

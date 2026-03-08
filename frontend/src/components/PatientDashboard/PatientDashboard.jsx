@@ -14,6 +14,7 @@ import AssistiveDevice from "./pages/services/AssistiveDevice";
 import Education from "./pages/services/Education";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import DailyCheckIn from "./pages/monitoring/DailyCheckIn";
 
 const PatientDashboard = () => {
   return (
@@ -31,6 +32,7 @@ const PatientDashboard = () => {
         <Route path="home-care/book" element={<BookHomeCare />} />
         <Route path="assistive-device" element={<AssistiveDevice />} />
         <Route path="education" element={<Education />} />
+        <Route path="monitoring" element={<DailyCheckIn />} />
         <Route path="payment-success-page" element={<AppointmentSuccess />} />
         <Route path="settings" element={<ProfilePage />} />
       </Route>

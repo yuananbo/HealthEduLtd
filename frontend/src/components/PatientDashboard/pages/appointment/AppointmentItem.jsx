@@ -3,9 +3,20 @@ import useTherapistDetails from "../../../../hooks/useTherapistDetails";
 import { Link } from "react-router-dom";
 
 const AppointmentItem = ({ appointment, isSelected, onSelect }) => {
+  const therapistId =
+    typeof appointment?.therapist === "string"
+      ? appointment.therapist
+      : appointment?.therapist?._id;
+
+  const shouldFetchTherapist = Boolean(therapistId);
   const { loading, error, therapist } = useTherapistDetails(
-    appointment.therapist
+    shouldFetchTherapist ? therapistId : null
   );
+
+  const therapistData =
+    appointment?.therapist && typeof appointment.therapist === "object"
+      ? appointment.therapist
+      : therapist?.data;
 
   if (loading)
     return (
@@ -42,19 +53,19 @@ const AppointmentItem = ({ appointment, isSelected, onSelect }) => {
         />
       </td>
       <td className="px-6 py-4">
-        {therapist ? (
+        {therapistData ? (
           <div className="flex items-center">
             <img
               className="w-10 h-10 rounded-full mr-3"
-              src={therapist.data.profilePicture}
-              alt={`${therapist.data.firstName} ${therapist.data.lastName}`}
+              src={therapistData.profilePicture}
+              alt={`${therapistData.firstName} ${therapistData.lastName}`}
             />
             <div>
               <p className="font-semibold text-gray-900">
-                {therapist.data.firstName} {therapist.data.lastName}
+                {therapistData.firstName} {therapistData.lastName}
               </p>
               <p className="text-xs text-gray-600">
-                {therapist.data.specialization}
+                {therapistData.specialization}
               </p>
             </div>
           </div>

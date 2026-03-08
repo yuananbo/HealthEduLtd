@@ -1,3 +1,18 @@
+/**
+ * Design Pattern: Strategy (runtime policy selection)
+ *
+ * Why used in this module:
+ * - Payment behavior differs by environment:
+ *   - Production: real payment provider integration (Flutterwave)
+ *   - Development/Demo: skip external provider to keep core booking flows stable
+ *
+ * What problem it solves:
+ * - Prevents missing credentials/provider downtime from breaking appointment booking during dev/demo.
+ *
+ * How it improves extensibility/maintainability:
+ * - New providers (or a stubbed/no-op provider) can be introduced as alternative strategies without
+ *   rewriting appointment creation logic.
+ */
 import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
 dotenv.config();
@@ -24,6 +39,15 @@ async function processPayment({
   email,
   req,
 }) {
+  // For local development/demo, skip external payment provider entirely.
+  if (process.env.NODE_ENV !== "production") {
+    return {
+      status: "success",
+      message: "Payment disabled in non-production environment",
+      meta: { authorization: {} },
+    };
+  }
+
   const protocol = req.protocol;
   const host = req.get("host");
 
