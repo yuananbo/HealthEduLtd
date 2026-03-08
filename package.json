@@ -12,7 +12,8 @@
     "education:seed:nutrition": "node backend/scripts/seedNutritionEducation.js",
     "education:seed:ncd": "node backend/scripts/seedNcdManagementEducation.js",
     "education:seed:exercises": "node backend/scripts/seedExercisesEducation.js",
-    "education:seed:disability": "node backend/scripts/seedDisabilityPreventionEducation.js"
+    "education:seed:disability": "node backend/scripts/seedDisabilityPreventionEducation.js",
+    "education:seed:child-detection": "node backend/scripts/seedChildDisabilityDetection.js"
   },
   "type": "module",
   "keywords": [],

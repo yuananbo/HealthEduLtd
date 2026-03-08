@@ -24,6 +24,7 @@ import {
   getEducationContentByTopic,
   saveEducationContent,
   getSavedEducationContent,
+  submitQuestionnaire,
 } from "../controllers/patient/education.controller.js";
 import {
   getMyDailyCheckIns,
@@ -81,6 +82,7 @@ router.route("/therapists").get(getAllVerifiedTherapists);
 router.get("/education/content", getEducationContentByTopic);
 router.post("/education/save", saveEducationContent);
 router.get("/education/saved", getSavedEducationContent);
+router.post("/education/questionnaire", submitQuestionnaire);
 
 router.get("/profile", (req, res) => {
   res.json(req.user);
