@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import moment from "moment";
+import { Link } from "react-router-dom";
 import api from "../../../../utils/api";
 import toast from "react-hot-toast";
 import AvailabilityDayPicker from "../../../common/widgets/AvailabilityDayPicker";
@@ -71,6 +72,12 @@ const CreateAvailability = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      <Link
+        to="/therapist/availability"
+        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
+      >
+        ← Back to Availability
+      </Link>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         Create Availability
       </h1>

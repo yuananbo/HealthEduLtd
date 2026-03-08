@@ -1,11 +1,12 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { FaCalendar, FaUsers, FaDollarSign, FaStar } from "react-icons/fa";
-import useDataFetching from "../../../../hooks/useFech";
 import StatsLoader from "./StatsLoader";
 
 const StatCard = ({ title, value, icon, darkMode, loading }) => {
   const formatNumber = (num) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const normalized = Number(num);
+    if (Number.isNaN(normalized)) return "0";
+    return normalized.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   // Determine if the value is income
@@ -56,7 +57,7 @@ const StatCard = ({ title, value, icon, darkMode, loading }) => {
       </div>
       <div className="text-2xl font-bold mb-1 flex items-baseline">
         {isIncome && <span className="text-lg mr-1">RWF</span>}
-        {isIncome ? formatNumber(value) : value}
+        {isIncome ? formatNumber(value) : value ?? 0}
       </div>
       <div
         className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}
