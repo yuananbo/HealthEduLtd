@@ -104,6 +104,17 @@ export const loginPatient = async (req, res) => {
       });
     }
 
+    if (patient.isActive === false) {
+      return res.status(400).json({
+        message: "Account is inactive. Please contact support.",
+      });
+    }
+
+    await Patient.updateOne(
+      { _id: patient._id },
+      { $set: { lastLogin: new Date() } }
+    );
+
     const user = await Patient.findById(patient._id).select("-password");
     createSendToken(user, 200, res);
   } catch (error) {

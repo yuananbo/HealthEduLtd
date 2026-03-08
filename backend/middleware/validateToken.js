@@ -44,6 +44,18 @@ const validateToken = async (req, res, next) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    if (decoded.userType === "patient" && user.isActive === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    if (decoded.userType === "therapist" && user.active === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    if (decoded.userType === "admin" && user.isActive === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
     req.user = user;
 
     next();

@@ -87,6 +87,13 @@ const patientSchema = new mongoose.Schema(
       type: String,
       default: "patient",
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+    },
     medicalHistory: [medicalHistorySchema],
     vitals: [vitalSchema],
     medications: [medicationSchema],
