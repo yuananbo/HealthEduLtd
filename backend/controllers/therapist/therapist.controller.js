@@ -405,6 +405,14 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
 
     const overallRating = ratings.length > 0 ? ratings[0].averageRating : 0;
 
+    /**
+     * Design Pattern: Facade
+     * Why here: Therapist dashboard needs data from multiple modules/models
+     * (Appointment, Payment, TherapistRating, Patient) but frontend should call only one API.
+     * Problem solved: avoids multiple client requests and duplicated data-merge logic in UI.
+     * Extensibility/Maintainability: new dashboard metrics can be added inside this facade
+     * without changing frontend call flow or route structure.
+     */
     const now = new Date();
     const monthWindow = 6;
     const startMonth = new Date(now.getFullYear(), now.getMonth() - (monthWindow - 1), 1);
@@ -473,6 +481,13 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
       monthlyRows.map((row) => [`${row.year}-${String(row.month).padStart(2, "0")}`, row])
     );
 
+    /**
+     * Design Pattern: Adapter (DTO mapper)
+     * Why here: aggregation output uses DB-centric shapes, while chart/table need UI-centric fields.
+     * Problem solved: decouples database pipeline format from frontend component contract.
+     * Extensibility/Maintainability: schema or aggregation changes stay localized in this mapper;
+     * dashboard components can remain stable as long as DTO shape is preserved.
+     */
     const performanceOverview = Array.from({ length: monthWindow }, (_, idx) => {
       const target = new Date(startMonth.getFullYear(), startMonth.getMonth() + idx, 1);
       const year = target.getFullYear();

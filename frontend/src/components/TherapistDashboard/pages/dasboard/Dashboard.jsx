@@ -40,6 +40,12 @@ const Dashboard = () => {
     }
   }, [currentUser?.token]);
 
+  /**
+   * Design Pattern: Adapter (ViewModel mapper)
+   * Why here: backend payload is normalized, but cards need display-safe values/format.
+   * Problem solved: prevents UI breakage from null/undefined raw fields.
+   * Extensibility/Maintainability: card rendering stays simple; formatting/default rules live in one place.
+   */
   const stats = [
     { title: "Appointments", value: data?.totalAppointments ?? 0, icon: "calendar" },
     { title: "Patients", value: data?.totalPatients ?? 0, icon: "users" },
