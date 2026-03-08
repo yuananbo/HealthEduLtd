@@ -42,6 +42,8 @@ const UserDetails = () => {
       return;
     }
 
+    // Detail requests preserve the userType hint from the list page so the
+    // backend can resolve the correct collection with fewer fallback checks.
     setLoading(true);
     try {
       const response = await axios.get(`${adminBaseURL}/users/${id}`, {
@@ -89,6 +91,8 @@ const UserDetails = () => {
 
       if (response.status === 200) {
         toast.success("User status updated");
+        // Rehydrate the full detail payload because one status change can also
+        // affect related account fields shown on this page.
         fetchUser();
       }
     } catch (error) {

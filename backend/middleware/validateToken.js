@@ -44,6 +44,8 @@ const validateToken = async (req, res, next) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Token validity alone is not enough here. We also enforce live account
+    // status so deactivated users cannot keep using old JWTs.
     if (decoded.userType === "patient" && user.isActive === false) {
       return res.status(403).json({ message: "Account is inactive" });
     }
