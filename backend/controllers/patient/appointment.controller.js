@@ -142,11 +142,6 @@ export const createAppointment = asyncHandler(async (req, res) => {
       return res.status(404).json({ error: "Patient not found" });
     }
 
-    // Check if the payment details are provided
-    if (!paymentDetails) {
-      return res.status(400).json({ error: "Payment details are required" });
-    }
-
     // For home-care appointments, validate that home address is provided
     if (appointmentType === "home-care") {
       const addr = homeAddress || {};
@@ -173,77 +168,22 @@ export const createAppointment = asyncHandler(async (req, res) => {
       appointmentData.homeAddress = homeAddress;
     }
 
+    if (!paymentDetails) {
+      appointmentData.status = "Waiting for Payment";
+    }
+
     const newAppointment = new Appointment(appointmentData);
 
     // Save the new appointment to the database
     const savedAppointment = await newAppointment.save();
 
-    // Create a new payment
-    const newPayment = new Payment({
-      amount: paymentDetails.amount,
-      currency: paymentDetails.currency,
-      status: "pending",
-      appointment: savedAppointment._id,
-    });
-
-    // Save the payment to the database
-    await newPayment.save();
-
-    let paymentResponse = null;
-    try {
-      paymentResponse = await processPayment({
-        phoneNumber: existingPatient.phoneNumber,
-        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-        amount: paymentDetails.amount,
-        currency: paymentDetails.currency,
-        appointmentId: savedAppointment._id,
-        email: existingPatient.email,
-        req: req,
-      });
-    } catch (paymentError) {
-      // For local development/demo, allow booking even when payment provider is down/misconfigured.
-      if (process.env.NODE_ENV !== "production") {
-        newPayment.status = "success";
-        await newPayment.save();
-
-        savedAppointment.status = "Pending";
-        await savedAppointment.save();
-
-        paymentResponse = {
-          status: "success",
-          message: "Payment skipped in non-production environment",
-          meta: { authorization: {} },
-        };
-      } else {
-        throw paymentError;
-      }
-    }
-
-    // If there's no redirect, treat payment as completed immediately (useful for local/dev mode).
-    const redirectUrl =
-      paymentResponse?.meta?.authorization?.redirect ||
-      paymentResponse?.data?.meta?.authorization?.redirect;
-    if (!redirectUrl) {
-      if (newPayment.status !== "success") {
-        newPayment.status = "success";
-        await newPayment.save();
-      }
-      if (savedAppointment.status === "Waiting for Payment") {
-        savedAppointment.status = "Pending";
-        await savedAppointment.save();
-      }
-    }
-
     // Reserve the slot immediately so it can't be double-booked.
-    // If payment redirects in production, you may want an expiry-based release mechanism.
     const reserveResult = await AvailabilityService.reserveTimeSlot(
       therapist,
       savedAppointment.date,
       savedAppointment.time
     );
     if (!reserveResult.updated) {
-      // Roll back appointment + payment record to avoid dangling bookings.
-      await Payment.deleteOne({ _id: newPayment._id });
       await Appointment.deleteOne({ _id: savedAppointment._id });
       return res.status(409).json({
         error:
@@ -253,14 +193,67 @@ export const createAppointment = asyncHandler(async (req, res) => {
       });
     }
 
-    //     // Fetch patient and therapist details
+    let paymentResponse = null;
+
+    if (paymentDetails) {
+      const newPayment = new Payment({
+        amount: paymentDetails.amount,
+        currency: paymentDetails.currency,
+        status: "pending",
+        appointment: savedAppointment._id,
+      });
+
+      await newPayment.save();
+
+      try {
+        paymentResponse = await processPayment({
+          phoneNumber: existingPatient.phoneNumber,
+          fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+          amount: paymentDetails.amount,
+          currency: paymentDetails.currency,
+          appointmentId: savedAppointment._id,
+          email: existingPatient.email,
+          req: req,
+        });
+      } catch (paymentError) {
+        if (process.env.NODE_ENV !== "production") {
+          newPayment.status = "success";
+          await newPayment.save();
+
+          savedAppointment.status = "Pending";
+          await savedAppointment.save();
+
+          paymentResponse = {
+            status: "success",
+            message: "Payment skipped in non-production environment",
+            meta: { authorization: {} },
+          };
+        } else {
+          throw paymentError;
+        }
+      }
+
+      const redirectUrl =
+        paymentResponse?.meta?.authorization?.redirect ||
+        paymentResponse?.data?.meta?.authorization?.redirect;
+      if (!redirectUrl) {
+        if (newPayment.status !== "success") {
+          newPayment.status = "success";
+          await newPayment.save();
+        }
+        if (savedAppointment.status === "Waiting for Payment") {
+          savedAppointment.status = "Pending";
+          await savedAppointment.save();
+        }
+      }
+    }
+
     const patientDetails = await Patient.findById(patientId);
     const therapistDetails = await Therapist.findById(therapist);
 
     const baseURL = `${req.protocol}://${req.get("host")}`;
     const appointmentLinkPatient = `${baseURL}/patient/appointments/${savedAppointment._id}`;
 
-    // For patient
     const patientEmailData = {
       recipientEmail: patientDetails.email,
       subject: "Appointment Booking Details",
@@ -279,7 +272,6 @@ export const createAppointment = asyncHandler(async (req, res) => {
     };
 
     const appointmentLinkTherapist = `${baseURL}/therapist/appointments/${savedAppointment._id}`;
-    // For therapist
     const therapistEmailData = {
       recipientEmail: therapistDetails.email,
       subject: "New Appointment Notification",

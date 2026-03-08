@@ -206,8 +206,12 @@ const Appointments = () => {
             >
               <option value="All">All Statuses</option>
               <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Declined">Declined</option>
+              <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
+              <option value="Rescheduled">Rescheduled</option>
+              <option value="Waiting for Payment">Waiting for Payment</option>
             </select>
             <FiFilter className="absolute left-3 top-3 text-gray-400" />
           </div>

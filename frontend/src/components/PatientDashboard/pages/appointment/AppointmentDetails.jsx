@@ -119,6 +119,12 @@ const AppointmentDetails = () => {
                     ? "bg-green-100 text-green-800"
                     : appointment?.data?.status === "Pending"
                     ? "bg-yellow-100 text-yellow-800"
+                    : appointment?.data?.status === "Completed"
+                    ? "bg-blue-100 text-blue-800"
+                    : appointment?.data?.status === "Waiting for Payment"
+                    ? "bg-orange-100 text-orange-800"
+                    : appointment?.data?.status === "Rescheduled"
+                    ? "bg-purple-100 text-purple-800"
                     : "bg-red-100 text-red-800"
                 }`}
               >
@@ -244,6 +250,27 @@ const AppointmentDetails = () => {
               </div>
             )}
           </div>
+
+          {appointment?.data?.status === "Waiting for Payment" && (
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-800">
+                    Payment Required
+                  </h3>
+                  <p className="text-sm text-orange-600 mt-1">
+                    Please complete payment to confirm your appointment.
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast("Payment feature coming soon!", { icon: "💳" })}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap"
+                >
+                  Pay Now
+                </button>
+              </div>
+            </div>
+          )}
 
           {appointment?.data?.status === "Accepted" && (
             <div className="space-y-6">
