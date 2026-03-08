@@ -106,6 +106,53 @@ const BookAppointment = () => {
     }
   };
 
+  const addToCalendar = async () => {
+    if (
+      !selectedDate ||
+      !selectedTime ||
+      !formData.service ||
+      !formData.purpose
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      setLoad(true);
+      await api.post(
+        "/patient/appointments",
+        {
+          therapist: therapist.id,
+          date: moment(selectedDate).format("YYYY-MM-DD"),
+          time: selectedTime?.time,
+          service: formData.service,
+          purpose: formData.purpose,
+          notes: formData.notes,
+          appointmentType: "in-person",
+          status: "Waiting for Payment",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${currentUser.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast.success("Appointment added to calendar. You can pay later.");
+      navigate("/patient/appointments");
+    } catch (err) {
+      console.error("Error adding appointment to calendar:", err);
+      if (err?.response?.status === 409) {
+        setSelectedTime(null);
+        await refetchAvailability();
+      }
+      toast.error(err.response?.data?.message || "Error adding appointment");
+    } finally {
+      setLoad(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -233,18 +280,26 @@ const BookAppointment = () => {
                 <p className="text-sm opacity-75 mt-1">Appointment cost</p>
               </div>
               <div className="bg-white text-blue-600 py-2 px-4 rounded-full font-semibold">
-                Secure Payment
+                Secure Appointment Now
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+            <button
+              type="button"
+              onClick={addToCalendar}
+              disabled={load}
+              className="border-2 border-indigo-600 text-indigo-600 py-3 px-6 rounded-lg hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-lg font-semibold transition duration-150 ease-in-out"
+            >
+              {load ? "Adding..." : "Add to Calendar"}
+            </button>
             <button
               type="submit"
               disabled={load}
               className="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-lg font-semibold transition duration-150 ease-in-out"
             >
-              {load ? "Booking..." : "Book Appointment"}
+              {load ? "Booking..." : "Book & Pay Now"}
             </button>
           </div>
         </form>

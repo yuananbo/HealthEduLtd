@@ -158,12 +158,68 @@ const BookHomeCare = () => {
     } catch (err) {
       console.error("Error booking home care appointment:", err);
       if (err?.response?.status === 409) {
-        // Slot was taken after the page loaded; refresh availability so UI hides it.
         setSelectedTime(null);
         await refetchAvailability();
       }
       toast.error(
         err.response?.data?.error || "Error booking home care appointment"
+      );
+    } finally {
+      setLoad(false);
+    }
+  };
+
+  const addToCalendar = async () => {
+    if (
+      !selectedDate ||
+      !selectedTime ||
+      !formData.service ||
+      !formData.purpose
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!homeAddress.country || !homeAddress.city) {
+      toast.error(
+        "Please provide at least your country and city for the home address"
+      );
+      return;
+    }
+
+    try {
+      setLoad(true);
+      await api.post(
+        "/patient/appointments",
+        {
+          therapist: therapist.id,
+          date: moment(selectedDate).format("YYYY-MM-DD"),
+          time: selectedTime?.time,
+          service: formData.service,
+          purpose: formData.purpose,
+          notes: formData.notes,
+          appointmentType: "home-care",
+          homeAddress: homeAddress,
+          status: "Waiting for Payment",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${currentUser.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast.success("Appointment added to calendar. You can pay later.");
+      navigate("/patient/appointments");
+    } catch (err) {
+      console.error("Error adding appointment to calendar:", err);
+      if (err?.response?.status === 409) {
+        setSelectedTime(null);
+        await refetchAvailability();
+      }
+      toast.error(
+        err.response?.data?.error || "Error adding appointment"
       );
     } finally {
       setLoad(false);
@@ -386,19 +442,27 @@ const BookHomeCare = () => {
                 <p className="text-sm opacity-75 mt-1">Home visit cost</p>
               </div>
               <div className="bg-white text-blue-600 py-2 px-4 rounded-full font-semibold">
-                Secure Payment
+                Secure Appointment Now
               </div>
             </div>
           </div>
 
           {/* Submit */}
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+            <button
+              type="button"
+              onClick={addToCalendar}
+              disabled={load}
+              className="border-2 border-blue-600 text-blue-600 py-3 px-6 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-lg font-semibold transition duration-150 ease-in-out"
+            >
+              {load ? "Adding..." : "Add to Calendar"}
+            </button>
             <button
               type="submit"
               disabled={load}
               className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-lg font-semibold transition duration-150 ease-in-out"
             >
-              {load ? "Booking..." : "Book Home Visit"}
+              {load ? "Booking..." : "Book & Pay Now"}
             </button>
           </div>
         </form>
