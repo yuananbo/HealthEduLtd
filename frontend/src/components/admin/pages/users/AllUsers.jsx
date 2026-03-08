@@ -36,6 +36,8 @@ const AllUsers = () => {
       return;
     }
 
+    // Keep list state server-driven so search, filters, and pagination always
+    // reflect the backend's normalized user data.
     setLoading(true);
     try {
       const response = await axios.get(`${adminBaseURL}/users`, {
@@ -94,6 +96,8 @@ const AllUsers = () => {
 
       if (response.status === 200) {
         toast.success("User status updated");
+        // Refetch after a mutation instead of patching local rows by hand,
+        // because the backend may also change derived status labels.
         fetchUsers();
       }
     } catch (error) {

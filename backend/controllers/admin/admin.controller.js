@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import AdminService from "../../services/admin.service.js";
+import AdminUserFactory from "../../services/adminUserFactory.service.js";
 import Therapist from "../../models/therapist.model.js";
 import Patient from "../../models/patient.model.js";
 import Admin from "../../models/admin.model.js";
@@ -18,16 +19,6 @@ const ensureAdminAccess = (admin) => {
     admin.role === "admin" ||
     admin.userType === "admin"
   );
-};
-
-const normalizeUserStatus = (user, userType) => {
-  if (userType === "patient") {
-    return user.isActive === false ? "inactive" : "active";
-  }
-  if (userType === "therapist") {
-    return user.active ? (user.isVerified ? "active" : "pending") : "inactive";
-  }
-  return user.isActive ? "active" : "inactive";
 };
 
 export const createSuperAdmin = asyncHandler(async (req, res) => {
@@ -258,46 +249,14 @@ export const getAdminUsers = asyncHandler(async (req, res) => {
       .lean(),
   ]);
 
+  // The factory keeps the controller focused on query behavior
+  // (filter/sort/paginate) instead of role-specific field mapping.
   const normalizedUsers = [
-    ...patients.map((item) => ({
-      id: item._id,
-      firstName: item.firstName,
-      lastName: item.lastName,
-      name: `${item.firstName} ${item.lastName}`,
-      email: item.email,
-      phoneNumber: item.phoneNumber || "",
-      userType: "patient",
-      status: normalizeUserStatus(item, "patient"),
-      lastLoginAt: item.lastLogin || null,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    })),
-    ...therapists.map((item) => ({
-      id: item._id,
-      firstName: item.firstName,
-      lastName: item.lastName,
-      name: `${item.firstName} ${item.lastName}`,
-      email: item.email,
-      phoneNumber: item.phoneNumber || "",
-      userType: "therapist",
-      status: normalizeUserStatus(item, "therapist"),
-      lastLoginAt: item.lastLogin || null,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    })),
-    ...admins.map((item) => ({
-      id: item._id,
-      firstName: item.firstName,
-      lastName: item.lastName,
-      name: `${item.firstName} ${item.lastName}`,
-      email: item.email,
-      phoneNumber: item.phoneNumber || "",
-      userType: item.role || item.userType || "admin",
-      status: normalizeUserStatus(item, "admin"),
-      lastLoginAt: item.lastLogin || null,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    })),
+    ...patients.map((item) => AdminUserFactory.createListRow(item, "patient")),
+    ...therapists.map((item) =>
+      AdminUserFactory.createListRow(item, "therapist")
+    ),
+    ...admins.map((item) => AdminUserFactory.createListRow(item, "admin")),
   ];
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -377,39 +336,9 @@ export const getAdminUserById = asyncHandler(async (req, res) => {
     const appointmentCount = await Appointment.countDocuments({ patient: patient._id });
 
     return {
-      id: patient._id,
-      userType: "patient",
-      fullName: `${patient.firstName} ${patient.lastName}`,
-      basicInfo: {
-        firstName: patient.firstName,
-        lastName: patient.lastName,
-        email: patient.email,
-        phoneNumber: patient.phoneNumber,
-        alternativePhoneNumber: patient.guardianPhoneNumber || "",
-        profilePicture: patient.profilePicture || "",
-        address: patient.address || {},
-        userType: "patient",
-      },
-      accountInfo: {
-        status: normalizeUserStatus(patient, "patient"),
-        isActive: patient.isActive !== false,
-        isVerified: true,
-        createdAt: patient.createdAt,
-        updatedAt: patient.updatedAt,
-        lastLoginAt: patient.lastLogin || null,
-      },
-      businessInfo: {
-        patientId: patient.patientId,
+      ...AdminUserFactory.createDetailPayload(patient, "patient", {
         appointmentCount,
-        savedContentCount: patient.savedEducationContents?.length || 0,
-        gender: patient.gender,
-        dateOfBirth: patient.dateOfBirth,
-        age: patient.age,
-        height: patient.height,
-        weight: patient.weight,
-        bloodType: patient.bloodType,
-        medicalHistory: patient.medicalHistory || [],
-      },
+      }),
     };
   };
 
@@ -426,45 +355,9 @@ export const getAdminUserById = asyncHandler(async (req, res) => {
       therapist: therapist._id,
     });
 
-    return {
-      id: therapist._id,
-      userType: "therapist",
-      fullName: `${therapist.firstName} ${therapist.lastName}`,
-      basicInfo: {
-        firstName: therapist.firstName,
-        lastName: therapist.lastName,
-        email: therapist.email,
-        phoneNumber: therapist.phoneNumber,
-        alternativePhoneNumber: therapist.alternativePhoneNumber || "",
-        profilePicture: therapist.profilePicture || "",
-        address: therapist.address || {},
-        userType: "therapist",
-      },
-      accountInfo: {
-        status: normalizeUserStatus(therapist, "therapist"),
-        isActive: therapist.active,
-        isVerified: therapist.isVerified,
-        createdAt: therapist.createdAt,
-        updatedAt: therapist.updatedAt,
-        lastLoginAt: therapist.lastLogin || null,
-      },
-      businessInfo: {
-        therapistId: therapist.therapistId,
-        profession: therapist.profession,
-        specialization: therapist.specialization,
-        bio: therapist.bio,
-        numOfYearsOfExperience: therapist.numOfYearsOfExperience,
-        licenseNumber: therapist.licenseNumber,
-        licenseDocument: therapist.licenseDocument || "",
-        cv: therapist.cv || "",
-        appointmentCount,
-        documentUploadStatus: {
-          hasProfilePicture: Boolean(therapist.profilePicture),
-          hasCv: Boolean(therapist.cv),
-          hasLicenseDocument: Boolean(therapist.licenseDocument),
-        },
-      },
-    };
+    return AdminUserFactory.createDetailPayload(therapist, "therapist", {
+      appointmentCount,
+    });
   };
 
   const getAdminPayload = async () => {
@@ -476,37 +369,13 @@ export const getAdminUserById = asyncHandler(async (req, res) => {
       return null;
     }
 
-    return {
-      id: targetAdmin._id,
-      userType: targetAdmin.role || "admin",
-      fullName: `${targetAdmin.firstName} ${targetAdmin.lastName}`,
-      basicInfo: {
-        firstName: targetAdmin.firstName,
-        lastName: targetAdmin.lastName,
-        email: targetAdmin.email,
-        phoneNumber: targetAdmin.phoneNumber || "",
-        alternativePhoneNumber: "",
-        profilePicture: targetAdmin.profilePicture || "",
-        address: {},
-        userType: targetAdmin.role || "admin",
-      },
-      accountInfo: {
-        status: normalizeUserStatus(targetAdmin, "admin"),
-        isActive: targetAdmin.isActive,
-        isVerified: true,
-        createdAt: targetAdmin.createdAt,
-        updatedAt: targetAdmin.updatedAt,
-        lastLoginAt: targetAdmin.lastLogin || null,
-      },
-      businessInfo: {
-        adminId: targetAdmin.admindId,
-        role: targetAdmin.role,
-        permissions: targetAdmin.permissions || [],
-      },
-    };
+    return AdminUserFactory.createDetailPayload(targetAdmin, "admin");
   };
 
   let payload = null;
+  // When userType is provided by the client we can avoid unnecessary lookups.
+  // Otherwise we probe models in a fixed order because ids are stored in
+  // separate collections and are not globally typed.
   if (requestedUserType === "patient") {
     payload = await getPatientPayload();
   } else if (requestedUserType === "therapist") {
@@ -574,6 +443,8 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
     }
 
     if (status === "active") {
+      // Reuse the original approval workflow so document checks and email
+      // verification rules stay consistent across the admin module.
       const approvalResult = await AdminService.approveTherapistAccount(
         admin._id,
         id,
@@ -582,6 +453,8 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
       updatedUser = approvalResult.therapist;
     } else if (status === "inactive") {
       if (existingTherapist.isVerified) {
+        // Verified therapists must go through the existing deactivation path
+        // because that flow already owns the related business rules and email.
         const deactivationResult = await AdminService.deactivateTherapistAccount(
           admin._id,
           id,
@@ -607,6 +480,7 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
     }
   } else if (userType === "admin" || userType === "super-admin") {
     if (status === "inactive") {
+      // Prevent admins from removing the last route back into the admin system.
       if (admin._id.toString() === id) {
         return res.status(400).json({
           message: "You cannot deactivate your own admin account",
@@ -646,7 +520,7 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
     data: {
       id: updatedUser._id,
       userType,
-      status: normalizeUserStatus(updatedUser, userType),
+      status: AdminUserFactory.normalizeStatus(updatedUser, userType),
     },
   });
 });
