@@ -405,11 +405,151 @@ export const getTherapistStatistics = asyncHandler(async (req, res) => {
 
     const overallRating = ratings.length > 0 ? ratings[0].averageRating : 0;
 
+    const now = new Date();
+    const monthWindow = 6;
+    const startMonth = new Date(now.getFullYear(), now.getMonth() - (monthWindow - 1), 1);
+
+    const monthlyRows = await Appointment.aggregate([
+      {
+        $match: {
+          therapist: new mongoose.Types.ObjectId(therapistId),
+          date: { $gte: startMonth },
+          status: { $nin: ["Declined", "Cancelled"] },
+        },
+      },
+      {
+        $lookup: {
+          from: "payments",
+          localField: "_id",
+          foreignField: "appointment",
+          as: "payments",
+        },
+      },
+      {
+        $addFields: {
+          successfulPaymentTotal: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: "$payments",
+                    as: "payment",
+                    cond: { $eq: ["$$payment.status", "success"] },
+                  },
+                },
+                as: "payment",
+                in: "$$payment.amount",
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$date" },
+            month: { $month: "$date" },
+          },
+          appointments: { $sum: 1 },
+          uniquePatients: { $addToSet: "$patient" },
+          income: { $sum: { $multiply: ["$successfulPaymentTotal", 0.65] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          month: "$_id.month",
+          appointments: 1,
+          patients: { $size: "$uniquePatients" },
+          income: { $round: ["$income", 2] },
+        },
+      },
+      { $sort: { year: 1, month: 1 } },
+    ]);
+
+    const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthKeyToData = new Map(
+      monthlyRows.map((row) => [`${row.year}-${String(row.month).padStart(2, "0")}`, row])
+    );
+
+    const performanceOverview = Array.from({ length: monthWindow }, (_, idx) => {
+      const target = new Date(startMonth.getFullYear(), startMonth.getMonth() + idx, 1);
+      const year = target.getFullYear();
+      const month = target.getMonth() + 1;
+      const key = `${year}-${String(month).padStart(2, "0")}`;
+      const row = monthKeyToData.get(key);
+      return {
+        month: monthLabels[target.getMonth()],
+        patients: row?.patients || 0,
+        appointments: row?.appointments || 0,
+        income: row?.income || 0,
+      };
+    });
+
+    const patientRows = await Appointment.aggregate([
+      {
+        $match: {
+          therapist: new mongoose.Types.ObjectId(therapistId),
+          status: { $nin: ["Declined", "Cancelled"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$patient",
+          lastVisit: { $max: "$date" },
+        },
+      },
+      { $sort: { lastVisit: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "_id",
+          foreignField: "_id",
+          as: "patientInfo",
+        },
+      },
+      { $unwind: "$patientInfo" },
+      {
+        $project: {
+          _id: 1,
+          firstName: "$patientInfo.firstName",
+          lastName: "$patientInfo.lastName",
+          age: "$patientInfo.age",
+          dateOfBirth: "$patientInfo.dateOfBirth",
+          lastVisit: 1,
+        },
+      },
+    ]);
+
+    const getAge = (age, dateOfBirth) => {
+      if (typeof age === "number" && !Number.isNaN(age)) return age;
+      if (!dateOfBirth) return null;
+      const dob = new Date(dateOfBirth);
+      if (Number.isNaN(dob.getTime())) return null;
+      let years = now.getFullYear() - dob.getFullYear();
+      const hasNotHadBirthdayThisYear =
+        now.getMonth() < dob.getMonth() ||
+        (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate());
+      if (hasNotHadBirthdayThisYear) years -= 1;
+      return years >= 0 ? years : null;
+    };
+
+    const recentPatients = patientRows.map((patient) => ({
+      id: patient._id,
+      name: `${patient.firstName} ${patient.lastName}`,
+      age: getAge(patient.age, patient.dateOfBirth),
+      lastVisit: patient.lastVisit,
+    }));
+
     const statistics = {
       totalPatients,
       totalAppointments,
       totalIncome: totalIncome[0] ? totalIncome[0].totalIncome : 0,
       overallRating,
+      performanceOverview,
+      recentPatients,
     };
 
     // console.log("Statistics calculated:", statistics);
