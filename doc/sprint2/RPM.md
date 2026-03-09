@@ -1,11 +1,11 @@
 ## RPM (Release Planning Meeting) — Sprint 2 Release Plan
 
-**Release window:** 2026/02/23 – 2026/03/09  
+**Release window:** 2026/02/23 – 2026/03/08
 **Project:** Healthcare App Development  
 **Status:** Active  
 
 ### Meeting details
-- **Date(s):** 2026/02/23 (kick-off) with updates through 2026/03/09
+- **Date(s):** 2026/02/23 (kick-off) with updates through 2026/03/08
 - **Purpose:** Confirm Sprint 2 release scope, quality targets, dependencies/limitations, and delivery plan
 - **Attendees:** Sprint 2 team members (feature owners)
 
@@ -36,10 +36,15 @@ The following items are **in scope** for the Sprint 2 release:
   - Included if stable and verified by sprint end.
 
 - **Patient profile preview before a session** (Jira: SCRUM-29)
-  - Included if stable and verified by sprint end.
+  - Allow therapists to see the patients information.
 
 - **Educational platform & upskilling** (Jira: SCRUM-17)
-  - Partial delivery if stable; otherwise deferred to the next release.
+  - Add new features and questionnaries.
+
+- **Implement Admin User Details and Status Management** (Jira: SCRUM-46)
+  - Implement the user details workflow
+  - Add account status management actions
+
 
 ---
 
@@ -72,8 +77,6 @@ The following bug fixes are treated as **release items**:
 - **Upcoming/history appointment display**
   - Filtering and sorting corrected so the dashboard and appointment views reflect accurate upcoming/history data.
 
-- **Therapist login stability**
-  - Therapist login issue reviewed and confirmed fixed (not part of new feature scope, but required for demo stability).
 
 ---
 
@@ -140,6 +143,8 @@ Sprint 2 release is successful if:
 
 ## 10) Next steps
 - Finalize remaining “In Progress” Jira items or move to the next sprint with clear rationale.
-- Merge and submit PR(s) for the Sprint 2 release work.
 - Prepare demo script and verification checklist aligned with the included scope.
 
+## 11) Code integration & branch strategy
+- All Sprint 2 completed features and fixes will be merged into the `develop2.0` branch after verification and code review.
+- Pull requests will be created from feature branches, and integration testing will be performed on the `develop2.0` branch to ensure stability before the demo.
