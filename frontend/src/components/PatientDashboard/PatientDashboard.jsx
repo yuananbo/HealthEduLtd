@@ -5,8 +5,6 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import ProfilePage from "./pages/profile/ProfilePage";
 import NotFound from "../../pages/NotFound";
 import { AppointmentDetails, Appointments } from "./pages/appointment";
-import TherapistList from "./pages/therapists/TherapistList";
-import BookAppointment from "./pages/appointment/BookAppointment";
 import AppointmentSuccess from "./pages/appointment/AppointmentSuccess";
 import HomeCareRehab from "./pages/services/HomeCareRehab";
 import BookHomeCare from "./pages/services/BookHomeCare";
@@ -25,9 +23,7 @@ const PatientDashboard = () => {
         <Route path="appointments">
           <Route index element={<Appointments />} />
           <Route path=":id" element={<AppointmentDetails />} />
-          <Route path="book" element={<BookAppointment />} />
         </Route>
-        <Route path="therapist-list" element={<TherapistList />} />
         <Route path="home-care" element={<HomeCareRehab />} />
         <Route path="home-care/book" element={<BookHomeCare />} />
         <Route path="assistive-device" element={<AssistiveDevice />} />

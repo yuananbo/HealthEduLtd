@@ -183,7 +183,9 @@ const AppointmentDetails = () => {
                     <FiMapPin className="text-greenPrimary mr-2" />
                     {appointment?.data?.appointmentType === "home-care"
                       ? "Home Care Visit"
-                      : "In-Person"}
+                      : appointment?.data?.appointmentType === "online"
+                        ? "Online Meeting"
+                        : "In-Person"}
                   </p>
                 </div>
               )}
@@ -219,7 +221,7 @@ const AppointmentDetails = () => {
                   appointment.
                 </p>
                 <Link
-                  to="/patient/therapist-list"
+                  to="/patient/home-care"
                   className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
                 >
                   Book Appointment

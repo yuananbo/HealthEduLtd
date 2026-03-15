@@ -1,6 +1,6 @@
 export const patientRoutes = [
   { path: "/patient/", name: "Dashboard" },
-  { path: "/patient/therapist-list", name: "Therapists" },
+  { path: "/patient/home-care", name: "Assisted Home Care" },
   { path: "/patient/appointments", name: "Appointments" },
   { path: "/patient/profile", name: "Profile" },
   { path: "/patient/settings", name: "Settings" },

@@ -115,8 +115,8 @@ const HomeCareRehab = () => {
             Assisted Home Care
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto">
-            Receive professional care in the safety of your home. Choose a
-            service category, then select a specialist to schedule a visit.
+            Book professional care either at home or as an online meeting. Choose a
+            service category, then select a specialist to schedule your session.
           </p>
         </div>
 
@@ -196,7 +196,7 @@ const HomeCareRehab = () => {
                     <TherapistCard
                       therapist={therapist}
                       onBookAppointment={() => handleBookHomeCare(therapist)}
-                      bookAppointmentLabel="Book Home Visit"
+                      bookAppointmentLabel="Book Appointment"
                     />
                   </motion.div>
                 ))}
