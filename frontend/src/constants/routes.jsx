@@ -3,7 +3,6 @@ export const patientRoutes = [
   { path: "/patient/home-care", name: "Assisted Home Care" },
   { path: "/patient/appointments", name: "Appointments" },
   { path: "/patient/profile", name: "Profile" },
-  { path: "/patient/settings", name: "Settings" },
 ];
 
 export const therapistRoutes = [

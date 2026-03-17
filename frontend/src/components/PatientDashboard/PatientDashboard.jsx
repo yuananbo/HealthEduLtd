@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import DashboardLayout from "./layout/DashboardLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -30,7 +30,7 @@ const PatientDashboard = () => {
         <Route path="education" element={<Education />} />
         <Route path="monitoring" element={<DailyCheckIn />} />
         <Route path="payment-success-page" element={<AppointmentSuccess />} />
-        <Route path="settings" element={<ProfilePage />} />
+        <Route path="settings" element={<Navigate to="../profile" replace />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

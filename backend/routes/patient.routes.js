@@ -1,9 +1,11 @@
 import express from "express";
-import fs from "fs";
 import multer from "multer";
+import path from "path";
+import fs from "fs";
 import {
   addMedicalHistory,
   deleteMedicalHistory,
+  deletePrescription,
   editPatientProfile,
   getAllVerifiedTherapists,
   loginPatient,
@@ -34,7 +36,7 @@ import {
 import { getAppointmentDetails } from "../controllers/therapist/appointment.controller.js";
 import validateResetToken from "../middleware/validateResetToken.js";
 
-const dir = "/tmp/my-uploads";
+const dir = path.join(process.cwd(), "backend", "uploads");
 
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true });
@@ -45,7 +47,8 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: function (req, file, cb) {
-    cb(null, file.fieldname + "-" + Date.now());
+    const ext = path.extname(file.originalname || "");
+    cb(null, file.fieldname + "-" + Date.now() + ext);
   },
 });
 
@@ -89,7 +92,12 @@ router.get("/profile", (req, res) => {
 });
 router
   .route("/profile")
-  .patch(upload.fields([{ name: "profilePicture" }]), editPatientProfile);
+  .patch(
+    upload.fields([{ name: "profilePicture" }, { name: "prescription" }]),
+    editPatientProfile
+  );
+
+router.delete("/profile/prescriptions/:prescriptionId", deletePrescription);
 
 router.post("/logout", logoutPatient);
 

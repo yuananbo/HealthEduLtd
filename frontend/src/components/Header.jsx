@@ -208,9 +208,6 @@ function Header({ toggleSidebar }) {
                     <span>Profile</span>
                   </DropdownItem>
                 </Link>
-                <DropdownItem onClick={() => alert("Settings!")}>
-                  <span>Settings</span>
-                </DropdownItem>
                 <DropdownItem onClick={handleLogout}>
                   <span>{loading ? "Logging out ..." : "Logout"}</span>
                 </DropdownItem>

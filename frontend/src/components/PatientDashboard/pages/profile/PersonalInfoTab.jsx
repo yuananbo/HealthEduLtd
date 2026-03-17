@@ -1,18 +1,16 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaUser,
   FaCalendarAlt,
   FaPhone,
   FaMapMarkerAlt,
   FaEnvelope,
-  FaCity,
   FaRoad,
   FaBuilding,
   FaCamera,
   FaIdCard,
 } from "react-icons/fa";
 import Input from "../../../common/forms/Input";
-import { UserContext } from "../../../../context/UserContext";
 import api from "../../../../utils/api";
 import Loading from "../../../utilities/Loading";
 import Button from "../../../common/Button";
@@ -22,30 +20,14 @@ import CustomPhoneInput from "../../../common/forms/PhoneInput";
 import CustomDropdown from "../../../common/forms/CustomDropdown";
 import CustomCountryDropdown from "../../../common/forms/CustomCountryDropdown";
 
-const PersonalInfoTab = () => {
-  const [patient, setPatient] = useState([]);
-  const { currentUser } = useContext(UserContext);
+const PersonalInfoTab = ({ patient, setPatient, reloadPatient }) => {
   const [loading, setLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState(patient.profilePicture);
+  const [imagePreview, setImagePreview] = useState(null);
   const [onUpdate, setOnUpdate] = useState(false);
 
-  const getPatientData = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/patient/profile`);
-      setPatient(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching patient data:", error);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    getPatientData();
-  }, []);
-
-  console.log("Patient Data:", patient);
+    setImagePreview(null);
+  }, [patient?._id]);
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -89,19 +71,22 @@ const PersonalInfoTab = () => {
     try {
       setOnUpdate(true);
       const formData = new FormData();
-      for (const key in patient) {
-        if (key === "profilePicture") {
-          formData.append("profilePicture", patient.profilePicture);
-        } else if (key === "address") {
-          for (const addressKey in patient.address) {
-            formData.append(
-              `address.${addressKey}`,
-              patient.address[addressKey]
-            );
-          }
-        } else {
-          formData.append(key, patient[key]);
-        }
+      formData.append("firstName", patient?.firstName ?? "");
+      formData.append("lastName", patient?.lastName ?? "");
+      formData.append("email", patient?.email ?? "");
+      formData.append("phoneNumber", patient?.phoneNumber ?? "");
+      formData.append("guardianPhoneNumber", patient?.guardianPhoneNumber ?? "");
+      formData.append("gender", patient?.gender ?? "");
+      formData.append("dateOfBirth", patient?.dateOfBirth ?? "");
+      formData.append("height", patient?.height ?? "");
+      formData.append("weight", patient?.weight ?? "");
+      formData.append("bloodType", patient?.bloodType ?? "");
+      formData.append("buildingNumber", patient?.buildingNumber ?? "");
+      formData.append("postalCode", patient?.postalCode ?? "");
+      formData.append("address", JSON.stringify(patient?.address ?? {}));
+
+      if (patient?.profilePicture instanceof File) {
+        formData.append("profilePicture", patient.profilePicture);
       }
 
       const response = await api.patch("/patient/profile", formData, {
@@ -110,7 +95,7 @@ const PersonalInfoTab = () => {
         },
       });
       toast.success("Profile updated successfully");
-      getPatientData();
+      await reloadPatient?.();
       setOnUpdate(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -127,6 +112,14 @@ const PersonalInfoTab = () => {
     return <Loading />;
   }
 
+  if (!patient) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto bg-white rounded-lg shadow">
+        <p className="text-gray-700">Profile data is not loaded yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       {/* Header Section */}
@@ -134,7 +127,13 @@ const PersonalInfoTab = () => {
         <div className="relative">
           {imagePreview || patient?.profilePicture ? (
             <img
-              src={imagePreview ? imagePreview : patient.profilePicture}
+              src={
+                imagePreview
+                  ? imagePreview
+                  : typeof patient?.profilePicture === "string"
+                  ? patient.profilePicture
+                  : ""
+              }
               alt="Profile"
               className="w-48 h-48 rounded-full object-cover border-4 border-greenPrimary shadow-lg transition-transform duration-300 hover:scale-105"
             />
@@ -379,7 +378,7 @@ const PersonalInfoTab = () => {
           />
           <Input
             handleChange={handleChange}
-            value={patient.postalCode}
+            value={patient?.postalCode ?? ""}
             labelText="Postal Code"
             labelFor="postalCode"
             id="postalCode"

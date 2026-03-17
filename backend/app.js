@@ -26,6 +26,9 @@ const app = express();
 
 const __dirname = path.resolve();
 
+// Serve uploaded files (local storage)
+app.use("/uploads", express.static(path.join(__dirname, "backend", "uploads")));
+
 app.use(
   cors({
     origin: "http://localhost:5173",

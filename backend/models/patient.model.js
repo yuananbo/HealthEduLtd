@@ -18,6 +18,14 @@ const medicationSchema = new mongoose.Schema({
   frequency: String
 });
 
+const prescriptionSchema = new mongoose.Schema({
+  url: String,
+  originalName: String,
+  storage: { type: String, enum: ["cloudinary", "local"], default: "cloudinary" },
+  localFileName: { type: String, default: "" },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
 const patientSchema = new mongoose.Schema(
   {
     patientId: {
@@ -78,6 +86,14 @@ const patientSchema = new mongoose.Schema(
         type: String,
       },
     },
+    buildingNumber: {
+      type: String,
+      default: "",
+    },
+    postalCode: {
+      type: String,
+      default: "",
+    },
     password: {
       type: String,
       required: true,
@@ -97,6 +113,10 @@ const patientSchema = new mongoose.Schema(
     medicalHistory: [medicalHistorySchema],
     vitals: [vitalSchema],
     medications: [medicationSchema],
+    prescriptions: {
+      type: [prescriptionSchema],
+      default: [],
+    },
     emergencyContact: {
       type: String,
     },
