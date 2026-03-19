@@ -2,6 +2,7 @@ import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
 import Payment from "../models/payment.model.js";
 import Appointment from "../models/appointment.model.js";
+import AppointmentService from "../services/appointment.service.js";
 dotenv.config();
 
 // Initialize Flutterwave with fallback for missing keys
@@ -58,8 +59,16 @@ export const handleFlutterwaveWebhook = async (req, res) => {
 
           const appointment = await Appointment.findById(appointmentId);
           if (appointment) {
-            appointment.status = "Pending";
-            await appointment.save();
+            await AppointmentService.updateStatusWithHistory(appointment, {
+              status: "Pending",
+              actor: {
+                userId: null,
+                userType: "system",
+                name: "Flutterwave Webhook",
+              },
+              source: "payment-webhook",
+              reason: "Payment confirmed by webhook",
+            });
 
             // Send confirmation emails if needed
 
@@ -136,8 +145,16 @@ export const handleFlutterwaveRedirect = async (req, res) => {
 
           const appointment = await Appointment.findById(appointmentId);
           if (appointment) {
-            appointment.status = "Pending";
-            await appointment.save();
+            await AppointmentService.updateStatusWithHistory(appointment, {
+              status: "Pending",
+              actor: {
+                userId: null,
+                userType: "system",
+                name: "Flutterwave Redirect",
+              },
+              source: "payment-redirect",
+              reason: "Payment verified from redirect callback",
+            });
 
             // Redirect to a success page
             return res.redirect("/patient/payment-success-page"); // Adjust this path as needed

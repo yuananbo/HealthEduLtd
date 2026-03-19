@@ -545,6 +545,72 @@ export const getAdminContents = asyncHandler(async (req, res) => {
   });
 });
 
+export const getAdminBookings = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const result = await AdminService.getAdminBookings(admin._id, req.query);
+
+  res.status(200).json({
+    success: true,
+    count: result.bookings.length,
+    data: result.bookings,
+    filters: result.filters,
+    stats: result.stats,
+    pagination: result.pagination,
+  });
+});
+
+export const getAdminBookingById = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const booking = await AdminService.getAdminBookingById(
+    admin._id,
+    req.params.id
+  );
+
+  res.status(200).json({
+    success: true,
+    data: booking,
+  });
+});
+
+export const updateAdminBookingStatus = asyncHandler(async (req, res) => {
+  const admin = req.user;
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { status } = req.body;
+  if (!status) {
+    return res.status(400).json({ message: "status is required" });
+  }
+
+  const result = await AdminService.updateAdminBookingStatus(
+    admin._id,
+    req.params.id,
+    status,
+    req
+  );
+
+  res.status(200).json({
+    success: true,
+    data: result.appointment,
+    emailSent: Boolean(result.patientEmailResponse),
+  });
+});
+
 // approve therapist account by admin
 export const approveTherapist = asyncHandler(async (req, res) => {
   try {
