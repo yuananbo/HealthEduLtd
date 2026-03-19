@@ -5,6 +5,9 @@ import ForgotPassword from "../PatientDashboard/pages/ForgotPassword";
 import ResetPassword from "../PatientDashboard/pages/ResetPassword";
 import AdminAccount from "./pages/account/AdminAccount";
 import NotFound from "../../pages/NotFound";
+import ContentDetails from "./pages/content/ContentDetails";
+import CreateContent from "./pages/content/CreateContent";
+import ContentList from "./pages/content/ContentList";
 import Dashboard from "./pages/dashboard/Dashboard";
 import AllTherapist from "./pages/therapists/AllTherapist";
 import TherapistDetails from "./pages/therapists/TherapistDetails";
@@ -14,6 +17,11 @@ const AdminDashboard = () => {
     <Routes>
       <Route path="/" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="content">
+          <Route index element={<ContentList />} />
+          <Route path="new" element={<CreateContent />} />
+          <Route path=":id" element={<ContentDetails />} />
+        </Route>
         <Route path="therapists">
           <Route index element={<AllTherapist />} />
           <Route path=":id" element={<TherapistDetails />} />
