@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
   FiCalendar,
   FiClock,
@@ -258,18 +258,19 @@ const AppointmentDetails = () => {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-orange-800">
-                    Payment Required
+                    Awaiting payment
                   </h3>
                   <p className="text-sm text-orange-600 mt-1">
-                    Please complete payment to confirm your appointment.
+                    Complete checkout to confirm this appointment. You will be
+                    redirected to our payment provider when available.
                   </p>
                 </div>
-                <button
-                  onClick={() => toast("Payment feature coming soon!", { icon: "💳" })}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap"
+                <NavLink
+                  to={`/patient/appointments/${id}/pay`}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap text-center"
                 >
-                  Pay Now
-                </button>
+                  Go to payment
+                </NavLink>
               </div>
             </div>
           )}

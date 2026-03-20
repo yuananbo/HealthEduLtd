@@ -21,6 +21,7 @@ import {
   getAppointments,
   cancelAppointment,
   rescheduleAppointment,
+  initiateAppointmentPayment,
 } from "../controllers/patient/appointment.controller.js";
 import {
   getEducationContentByTopic,
@@ -71,6 +72,7 @@ router.get("/reset-password/:token", validateResetToken, (req, res) => {
 router.post("/reset-password", validateResetToken, resetPassword);
 
 router.use(validateToken);
+router.post("/appointments/:_id/pay", initiateAppointmentPayment);
 router.route("/appointments").get(getAppointments).post(createAppointment);
 router
   .route("/appointments/:_id")

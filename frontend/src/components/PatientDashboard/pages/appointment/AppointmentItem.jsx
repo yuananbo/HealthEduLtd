@@ -78,11 +78,14 @@ const AppointmentItem = ({ appointment, isSelected, onSelect }) => {
           className={`px-2 py-1 rounded-full text-xs font-medium ${
             appointment.status === "Pending"
               ? "bg-yellow-100 text-yellow-800"
-              : appointment.status === "Confirmed"
-              ? "bg-green-100 text-green-800"
-              : appointment.status === "Cancelled"
-              ? "bg-red-100 text-red-800"
-              : "bg-gray-100 text-gray-800"
+              : appointment.status === "Waiting for Payment"
+              ? "bg-orange-100 text-orange-800"
+              : appointment.status === "Confirmed" ||
+                  appointment.status === "Accepted"
+                ? "bg-green-100 text-green-800"
+                : appointment.status === "Cancelled"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
           }`}
         >
           {appointment.status}
@@ -96,12 +99,22 @@ const AppointmentItem = ({ appointment, isSelected, onSelect }) => {
         {new Date(appointment.createdAt).toLocaleDateString()}
       </td>
       <td className="px-6 py-4">
-        <Link
-          to={`/patient/appointments/${appointment._id}`}
-          className="font-medium text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out"
-        >
-          View Details
-        </Link>
+        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <Link
+            to={`/patient/appointments/${appointment._id}`}
+            className="font-medium text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out"
+          >
+            View details
+          </Link>
+          {appointment.status === "Waiting for Payment" && (
+            <Link
+              to={`/patient/appointments/${appointment._id}/pay`}
+              className="font-medium text-orange-600 hover:text-orange-800 transition duration-150 ease-in-out"
+            >
+              Pay
+            </Link>
+          )}
+        </div>
       </td>
     </tr>
   );

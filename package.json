@@ -9,6 +9,8 @@
     "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend",
     "db:init": "node backend/scripts/initDB.js",
     "db:setup": "brew services start mongodb/brew/mongodb-community@8.0 && node backend/scripts/initDB.js",
+    "env:init-payment": "node backend/scripts/initPaymentEnvFromExample.js",
+    "payment:check": "node backend/scripts/checkPaymentEnv.js",
     "education:seed:nutrition": "node backend/scripts/seedNutritionEducation.js",
     "education:seed:ncd": "node backend/scripts/seedNcdManagementEducation.js",
     "education:seed:exercises": "node backend/scripts/seedExercisesEducation.js",

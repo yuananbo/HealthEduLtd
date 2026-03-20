@@ -6,12 +6,12 @@
  */
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import moment from "moment";
 import path from "path";
 import { fileURLToPath } from "url";
 
 import Therapist from "../models/therapist.model.js";
 import Availability from "../models/availability.model.js";
+import { buildRolling7DayAvailabilitiesUTC } from "./availabilityRolling.util.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,15 +103,6 @@ const SEED_THERAPISTS = [
   },
 ];
 
-function buildNext7DaysAvailabilities() {
-  // Store availability dates as UTC date-only (00:00Z) to avoid timezone shifts in UI.
-  const start = moment.utc().add(1, "day").startOf("day");
-  return Array.from({ length: 7 }).map((_, i) => ({
-    date: start.clone().add(i, "day").toDate(),
-    times: TIMES.map((t) => ({ time: t, isActive: true })),
-  }));
-}
-
 async function upsertTherapist(seed) {
   const data = {
     ...seed,
@@ -141,7 +132,7 @@ async function ensureActiveAvailability(therapist) {
     availabilityName,
   });
 
-  const availabilities = buildNext7DaysAvailabilities();
+  const availabilities = buildRolling7DayAvailabilitiesUTC(TIMES);
 
   if (existing) {
     existing.isActive = true;
@@ -170,6 +161,15 @@ async function main() {
   console.log("Connecting to MongoDB...");
   await mongoose.connect(process.env.DBCONNECTION);
   console.log("Connected.\n");
+
+  const window = buildRolling7DayAvailabilitiesUTC(TIMES);
+  console.log(
+    "Mock availability (today + 6 days, UTC):",
+    window[0].date.toISOString().slice(0, 10),
+    "→",
+    window[6].date.toISOString().slice(0, 10),
+    "\n"
+  );
 
   const results = [];
   for (const seed of SEED_THERAPISTS) {

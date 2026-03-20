@@ -15,7 +15,18 @@
  */
 import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
+import { getPublicBackendBaseUrl } from "./paymentEnv.js";
 dotenv.config();
+
+/**
+ * Local/demo: skip Flutterwave and mark payment as OK (see processPayment).
+ * Set USE_REAL_PAYMENT=true in .env to call Flutterwave while NODE_ENV is development
+ * (you must configure FLW_PUBLIC_KEY and FLW_SECRET_KEY).
+ */
+export function isMockPayment() {
+  if (process.env.USE_REAL_PAYMENT === "true") return false;
+  return process.env.NODE_ENV !== "production";
+}
 
 // Initialize Flutterwave with fallback for missing keys
 let flw = null;
@@ -39,8 +50,7 @@ async function processPayment({
   email,
   req,
 }) {
-  // For local development/demo, skip external payment provider entirely.
-  if (process.env.NODE_ENV !== "production") {
+  if (isMockPayment()) {
     return {
       status: "success",
       message: "Payment disabled in non-production environment",
@@ -48,11 +58,9 @@ async function processPayment({
     };
   }
 
-  const protocol = req.protocol;
-  const host = req.get("host");
-
   const txRef = `appointment-${appointmentId}-${Date.now()}`;
-  const redirect_url = `${protocol}://${host}/api/v1/payment-success`;
+  const backendBase = getPublicBackendBaseUrl(req);
+  const redirect_url = `${backendBase}/api/v1/payment-success`;
 
   console.log("Redirect URL:", redirect_url);
 

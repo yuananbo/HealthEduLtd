@@ -12,6 +12,7 @@ import TherapistCard from "../../../features/cards/SmallCard";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
+import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
 
 const BookAppointment = () => {
   const location = useLocation();
@@ -84,14 +85,11 @@ const BookAppointment = () => {
         }
       );
 
-      if (
-        response.data.paymentResponse &&
-        response.data.paymentResponse.meta.authorization.redirect
-      ) {
-        window.location.href =
-          response.data.paymentResponse.meta.authorization.redirect;
+      const redirect = getPaymentRedirectUrl(response.data.paymentResponse);
+      if (redirect) {
+        window.location.href = redirect;
       } else {
-        toast.success("Appointment booked successfully");
+        toast.success("Appointment booked — payment complete.");
         navigate("/patient/payment-success-page");
       }
     } catch (err) {
@@ -139,7 +137,9 @@ const BookAppointment = () => {
         }
       );
 
-      toast.success("Appointment added to calendar. You can pay later.");
+      toast.success(
+        "Saved as pending payment. Open the appointment and tap Pay when you're ready."
+      );
       navigate("/patient/appointments");
     } catch (err) {
       console.error("Error adding appointment to calendar:", err);
@@ -292,7 +292,7 @@ const BookAppointment = () => {
               disabled={load}
               className="border-2 border-indigo-600 text-indigo-600 py-3 px-6 rounded-lg hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-lg font-semibold transition duration-150 ease-in-out"
             >
-              {load ? "Adding..." : "Add to Calendar"}
+              {load ? "Saving..." : "Add to cart (pay later)"}
             </button>
             <button
               type="submit"
