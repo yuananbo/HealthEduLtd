@@ -7,12 +7,18 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setupTests.js",
     globals: true,
+    include: ["src/**/*.test.jsx"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage/frontend",
       include: [
         "src/components/PatientDashboard/pages/services/AssistiveDevice.jsx",
-      ],
-    },
-  },
+        "src/components/PatientDashboard/pages/appointment/AppointmentDetails.jsx",
+        "src/components/TherapistDashboard/pages/dasboard/Dashboard.jsx",
+        "src/components/TherapistDashboard/pages/profile/RatingsTab.jsx",
+        "src/components/TherapistDashboard/pages/appointments/AppointmentDetails.jsx"
+      ]
+    }
+  }
 });

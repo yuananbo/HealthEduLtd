@@ -40,9 +40,8 @@ vi.mock("../../models/payment.model.js", () => ({
   default: paymentModelMocks.Payment,
 }));
 
-const appointmentDeleteOneMock = vi.fn().mockResolvedValue({});
-
 const appointmentModelMocks = vi.hoisted(() => {
+  const deleteOne = vi.fn().mockResolvedValue({});
   function Appointment(data) {
     Object.assign(this, data);
     this._id = "507f1f77bcf86cd799439099";
@@ -55,9 +54,11 @@ const appointmentModelMocks = vi.hoisted(() => {
     this.appointmentType = data.appointmentType ?? "in-person";
     this.save = vi.fn().mockResolvedValue(this);
   }
-  Appointment.deleteOne = appointmentDeleteOneMock;
-  return { Appointment };
+  Appointment.deleteOne = deleteOne;
+  return { Appointment, deleteOne };
 });
+
+const appointmentDeleteOneMock = appointmentModelMocks.deleteOne;
 
 vi.mock("../../models/appointment.model.js", () => ({
   default: appointmentModelMocks.Appointment,

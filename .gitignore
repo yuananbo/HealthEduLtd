@@ -12,6 +12,9 @@ coverage
 dist
 dist-ssr
 *.local
+coverage/
+frontend/coverage/
+.vitest/
 
 .env
 
