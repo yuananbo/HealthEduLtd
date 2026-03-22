@@ -15,6 +15,7 @@ export const therapistRoutes = [
 
 export const adminRoutes = [
   { path: "/admin/", name: "MainDashboard" },
+  { path: "/admin/content", name: "Content" },
   { path: "/admin/users", name: "Users" },
   { path: "/admin/therapists", name: "Therapist" },
   // { path: "/therapist/settings", name: "Settings" },

@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import AdminService from "../../services/admin.service.js";
+import EducationContent from "../../models/educationContent.model.js";
 import AdminUserFactory from "../../services/adminUserFactory.service.js";
 import Therapist from "../../models/therapist.model.js";
 import Patient from "../../models/patient.model.js";
@@ -13,6 +14,52 @@ import EducationContent from "../../models/educationContent.model.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const ensureAdminAccess = (admin) =>
+  admin.role === "super-admin" ||
+  admin.role === "admin" ||
+  admin.userType === "admin";
+
+const buildContentPayload = (body) => ({
+  topic: body.topic,
+  type: body.type,
+  title: body.title?.trim(),
+  summary: body.summary?.trim(),
+  duration: body.duration?.trim(),
+  body: body.body?.trim(),
+  sourceName: body.sourceName?.trim(),
+  sourceUrl: body.sourceUrl?.trim(),
+  isPublished:
+    typeof body.isPublished === "boolean" ? body.isPublished : undefined,
+  order:
+    body.order === undefined || body.order === null || body.order === ""
+      ? undefined
+      : Number(body.order),
+});
+
+const validateContentPayload = (payload, { partial = false } = {}) => {
+  const requiredFields = [
+    "topic",
+    "type",
+    "title",
+    "summary",
+    "duration",
+    "body",
+    "sourceName",
+    "sourceUrl",
+  ];
+
+  if (!partial) {
+    const missingField = requiredFields.find((field) => !payload[field]);
+    if (missingField) {
+      return `${missingField} is required`;
+    }
+  }
+
+  if (payload.order !== undefined && Number.isNaN(payload.order)) {
+    return "order must be a number";
+  }
+
+  return null;
 const ensureAdminAccess = (admin) => {
   return (
     admin.role === "super-admin" ||
@@ -133,6 +180,210 @@ export const getAllTherapists = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const getAdminContents = asyncHandler(async (req, res) => {
+  const admin = req.user;
+
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const {
+    search = "",
+    topic = "all",
+    type = "all",
+    status = "all",
+    page = 1,
+    limit = 10,
+  } = req.query;
+
+  const query = {};
+
+  if (topic !== "all") {
+    query.topic = topic;
+  }
+
+  if (type !== "all") {
+    query.type = type;
+  }
+
+  if (status === "published") {
+    query.isPublished = true;
+  } else if (status === "draft" || status === "unpublished") {
+    query.isPublished = false;
+  }
+
+  if (search.trim()) {
+    query.$or = [
+      { title: { $regex: search.trim(), $options: "i" } },
+      { summary: { $regex: search.trim(), $options: "i" } },
+      { sourceName: { $regex: search.trim(), $options: "i" } },
+    ];
+  }
+
+  const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+  const limitNumber = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+
+  const total = await EducationContent.countDocuments(query);
+
+  const contentRows = await EducationContent.find(query)
+    .select(
+      "title topic type summary duration sourceName sourceUrl isPublished order createdAt updatedAt"
+    )
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .skip((pageNumber - 1) * limitNumber)
+    .limit(limitNumber)
+    .lean();
+
+  res.status(200).json({
+    success: true,
+    count: contentRows.length,
+    total,
+    currentPage: pageNumber,
+    totalPages: Math.max(1, Math.ceil(total / limitNumber)),
+    filters: {
+      search,
+      topic,
+      type,
+      status,
+      page: pageNumber,
+      limit: limitNumber,
+    },
+    data: contentRows,
+  });
+});
+
+export const getAdminContentById = asyncHandler(async (req, res) => {
+  const admin = req.user;
+
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { id } = req.params;
+
+  const content = await EducationContent.findById(id)
+    .select("-__v")
+    .lean();
+
+  if (!content) {
+    return res.status(404).json({ message: "Content not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: content,
+  });
+});
+
+export const updateAdminContentStatus = asyncHandler(async (req, res) => {
+  const admin = req.user;
+
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { id } = req.params;
+  const { isPublished } = req.body;
+
+  if (typeof isPublished !== "boolean") {
+    return res.status(400).json({
+      message: "isPublished must be provided as a boolean",
+    });
+  }
+
+  const content = await EducationContent.findByIdAndUpdate(
+    id,
+    { isPublished },
+    { new: true }
+  )
+    .select("-__v")
+    .lean();
+
+  if (!content) {
+    return res.status(404).json({ message: "Content not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: isPublished
+      ? "Content published successfully"
+      : "Content unpublished successfully",
+    data: content,
+  });
+});
+
+export const createAdminContent = asyncHandler(async (req, res) => {
+  const admin = req.user;
+
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const payload = buildContentPayload(req.body);
+  const validationError = validateContentPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ message: validationError });
+  }
+
+  const content = await EducationContent.create({
+    ...payload,
+    isPublished:
+      typeof payload.isPublished === "boolean" ? payload.isPublished : false,
+    order: payload.order ?? 0,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Content created successfully",
+    data: content,
+  });
+});
+
+export const updateAdminContent = asyncHandler(async (req, res) => {
+  const admin = req.user;
+
+  if (!ensureAdminAccess(admin)) {
+    return res.status(403).json({
+      message: "Unauthorized: You do not have permission to access this resource",
+    });
+  }
+
+  const { id } = req.params;
+  const payload = buildContentPayload(req.body);
+  const validationError = validateContentPayload(payload, { partial: false });
+
+  if (validationError) {
+    return res.status(400).json({ message: validationError });
+  }
+
+  const content = await EducationContent.findByIdAndUpdate(
+    id,
+    payload,
+    { new: true, runValidators: true }
+  )
+    .select("-__v")
+    .lean();
+
+  if (!content) {
+    return res.status(404).json({ message: "Content not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Content updated successfully",
+    data: content,
+  });
+});
 
 /**
  * Logout admin
