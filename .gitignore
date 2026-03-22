@@ -39,3 +39,4 @@ Thumbs.db
 *.pid
 *.seed
 *.pid.lock
+backend/uploads/
