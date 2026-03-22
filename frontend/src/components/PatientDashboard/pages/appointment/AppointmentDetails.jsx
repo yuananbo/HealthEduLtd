@@ -164,6 +164,8 @@ const AppointmentDetails = () => {
       toast.error(message);
     } finally {
       setSubmittingReview(false);
+  }
+};
       
   const handlePayConsultationFee = async () => {
     if (!id) return;
