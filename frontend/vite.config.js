@@ -33,7 +33,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["src/components/admin/**/*.jsx", "src/constants/routes.jsx"],
+      include: ["src/components/admin/pages/content/**/*.jsx"],
     },
   },
   server: {
