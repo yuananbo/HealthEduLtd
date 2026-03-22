@@ -10,7 +10,6 @@ import Patient from "../../models/patient.model.js";
 import Admin from "../../models/admin.model.js";
 import Appointment from "../../models/appointment.model.js";
 import Payment from "../../models/payment.model.js";
-import EducationContent from "../../models/educationContent.model.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,12 +59,6 @@ const validateContentPayload = (payload, { partial = false } = {}) => {
   }
 
   return null;
-const ensureAdminAccess = (admin) => {
-  return (
-    admin.role === "super-admin" ||
-    admin.role === "admin" ||
-    admin.userType === "admin"
-  );
 };
 
 export const createSuperAdmin = asyncHandler(async (req, res) => {
@@ -773,26 +766,6 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
       userType,
       status: AdminUserFactory.normalizeStatus(updatedUser, userType),
     },
-  });
-});
-
-export const getAdminContents = asyncHandler(async (req, res) => {
-  const admin = req.user;
-  if (!ensureAdminAccess(admin)) {
-    return res.status(403).json({
-      message: "Unauthorized: You do not have permission to access this resource",
-    });
-  }
-
-  const contentRows = await EducationContent.find({})
-    .select("title topic type sourceName isPublished updatedAt createdAt")
-    .sort({ updatedAt: -1 })
-    .lean();
-
-  res.status(200).json({
-    success: true,
-    count: contentRows.length,
-    data: contentRows,
   });
 });
 

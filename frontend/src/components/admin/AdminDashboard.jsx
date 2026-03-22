@@ -24,6 +24,7 @@ const AdminDashboard = () => {
           <Route index element={<ContentList />} />
           <Route path="new" element={<CreateContent />} />
           <Route path=":id" element={<ContentDetails />} />
+        </Route>
         <Route path="users">
           <Route index element={<AllUsers />} />
           <Route path=":id" element={<UserDetails />} />
