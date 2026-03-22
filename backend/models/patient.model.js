@@ -136,6 +136,18 @@ const patientSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    cartItems: {
+      type: [
+        {
+          deviceId: { type: String, required: true },
+          name: { type: String, required: true },
+          unitPrice: { type: Number, required: true },
+          quantity: { type: Number, required: true, min: 1, default: 1 },
+          addedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

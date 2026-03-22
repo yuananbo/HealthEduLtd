@@ -31,6 +31,13 @@ import {
   submitQuestionnaire,
 } from "../controllers/patient/education.controller.js";
 import {
+  getMyCart,
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+  clearCart,
+} from "../controllers/patient/cart.controller.js";
+import {
   getMyDailyCheckIns,
   getMyLatestDailyCheckIn,
   upsertDailyCheckIn,
@@ -93,6 +100,14 @@ router.get("/education/content", getEducationContentByTopic);
 router.post("/education/save", saveEducationContent);
 router.get("/education/saved", getSavedEducationContent);
 router.post("/education/questionnaire", submitQuestionnaire);
+
+// Cart
+router
+  .route("/cart")
+  .get(getMyCart)
+  .post(addToCart)
+  .delete(clearCart);
+router.route("/cart/:deviceId").patch(updateCartItem).delete(removeCartItem);
 
 router.get("/profile", (req, res) => {
   res.json(req.user);
