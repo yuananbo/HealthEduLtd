@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-03-22T20:05:32.709Z",
+  "seed": {
+    "users": {
+      "admin": {
+        "email": "perf.admin@mobirehab.com",
+        "password": "Perf123!",
+        "firstName": "Perf",
+        "lastName": "Admin"
+      },
+      "patient": {
+        "email": "perf.patient@mobirehab.com",
+        "password": "Perf123!",
+        "firstName": "Perf",
+        "lastName": "Patient"
+      },
+      "therapist": {
+        "email": "perf.therapist@mobirehab.com",
+        "password": "Perf123!",
+        "firstName": "Perf",
+        "lastName": "Therapist"
+      }
+    },
+    "ids": {
+      "adminId": "69c049073a172dba1f50d3ab",
+      "patientId": "69c049073a172dba1f50d3ae",
+      "therapistId": "69c049073a172dba1f50d3b8",
+      "completedAppointmentId": "69c049073a172dba1f50d3bb",
+      "acceptedAppointmentId": "69c049073a172dba1f50d3be",
+      "pendingAppointmentId": "69c049073a172dba1f50d3c1"
+    }
+  },
+  "sessions": {
+    "admin": {
+      "userType": "admin",
+      "hasToken": true
+    },
+    "therapist": {
+      "userType": "therapist",
+      "hasToken": true
+    },
+    "patient": {
+      "userType": "patient",
+      "hasToken": true
+    }
+  }
+}
