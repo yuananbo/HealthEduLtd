@@ -12,7 +12,7 @@ import api from "../../../../utils/api";
  * using the user's local calendar. Avoids `new Date("YYYY-MM-DD")` UTC parsing,
  * which shifts the calendar day in many timezones.
  */
-function matchesLocalCalendarDay(isoString, dateInputValue) {
+export function matchesLocalCalendarDay(isoString, dateInputValue) {
   if (!dateInputValue || !isoString) return true;
   const parts = dateInputValue.split("-").map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return true;
