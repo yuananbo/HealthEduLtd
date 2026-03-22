@@ -7,6 +7,24 @@ import Loading from "../../../utilities/Loading";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 
+/**
+ * Match an ISO date (e.g. createdAt) to an <input type="date"> value (YYYY-MM-DD)
+ * using the user's local calendar. Avoids `new Date("YYYY-MM-DD")` UTC parsing,
+ * which shifts the calendar day in many timezones.
+ */
+function matchesLocalCalendarDay(isoString, dateInputValue) {
+  if (!dateInputValue || !isoString) return true;
+  const parts = dateInputValue.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return true;
+  const [y, m, d] = parts;
+  const t = new Date(isoString);
+  return (
+    t.getFullYear() === y &&
+    t.getMonth() + 1 === m &&
+    t.getDate() === d
+  );
+}
+
 const Appointments = () => {
   const [loading, error, data, refetch] = useDataFetching(
     "/patient/appointments?limit=50"
@@ -51,10 +69,8 @@ const Appointments = () => {
       }
 
       if (dateFilter) {
-        filtered = filtered.filter(
-          (appointment) =>
-            new Date(appointment.createdAt).toDateString() ===
-            new Date(dateFilter).toDateString()
+        filtered = filtered.filter((appointment) =>
+          matchesLocalCalendarDay(appointment.createdAt, dateFilter)
         );
       }
 
