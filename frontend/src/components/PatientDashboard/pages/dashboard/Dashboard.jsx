@@ -9,6 +9,7 @@ import AppointmentHistory from "./AppointmentHistory";
 import HealthMetrics from "./HealthMetrics";
 import Medications from "./Medications";
 import MedicalRecordsTelemedicine from "./MedicalRecordsTelemedicine";
+import DailyCheckInWidget from "./DailyCheckInWidget";
 import { UserContext } from "../../../../context/UserContext";
 
 const Dashboard = ({ darkMode }) => {
@@ -66,15 +67,10 @@ const Dashboard = ({ darkMode }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <PatientProfile darkMode={darkMode} />
           <UpcomingAppointments darkMode={darkMode} />
-          <AppointmentHistory
-            appointments={mockPatient.appointmentHistory}
-            darkMode={darkMode}
-          />
+          <AppointmentHistory darkMode={darkMode} />
+          <DailyCheckInWidget darkMode={darkMode} />
           <HealthMetrics darkMode={darkMode} />
-          <Medications
-            medications={mockPatient.medications}
-            darkMode={darkMode}
-          />
+          <Medications darkMode={darkMode} />
           <MedicalRecordsTelemedicine darkMode={darkMode} />
         </div>
       </div>

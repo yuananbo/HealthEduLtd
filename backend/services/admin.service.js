@@ -90,14 +90,14 @@ class AdminService {
       const isPasswordValid = await admin.matchPassword(password);
 
       if (!isPasswordValid) {
+        const nextAttemptCount = (admin.loginAttempts || 0) + 1;
+
         // Increment login attempts
         await admin.incrementLoginAttempts();
 
-        console.log("Login attemps", admin.loginAttempts);
+        console.log("Login attempts", nextAttemptCount);
 
-        if (admin.loginAttempts >= 5) {
-          const lockUntil = Date.now() + 30 * 60 * 1000; // Lock for 30 minutes
-          await Admin.updateOne({ _id: admin._id }, { lockUntil: lockUntil });
+        if (nextAttemptCount >= 5) {
           throw new Error(
             "Too many failed attempts. Account locked for 30 minutes."
           );

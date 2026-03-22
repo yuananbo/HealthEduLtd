@@ -9,7 +9,10 @@ import {
   createSuperAdmin,
   disapproveTherapist,
   getAdminContents,
+  getAdminUserById,
+  getAdminUsers,
   getAllTherapists,
+  getDashboardSummary,
   getTherapistAppointments,
   getTherapistById,
   getTherapistStats,
@@ -17,6 +20,7 @@ import {
   logoutAdmin,
   updateAdminContent,
   updateAdminContentStatus,
+  updateAdminUserStatus,
 } from "../controllers/admin/admin.controller.js";
 import validateToken from "../middleware/validateToken.js";
 import { checkRouteIsEnabled } from "../middleware/checkRouteIsEnabled.js";
@@ -43,6 +47,11 @@ router.route("/create").post(checkPasswordStrength, createAdmin);
 router.route("/content").get(getAdminContents).post(createAdminContent);
 router.route("/content/:id").get(getAdminContentById).patch(updateAdminContent);
 router.route("/content/:id/status").patch(updateAdminContentStatus);
+router.route("/dashboard/summary").get(getDashboardSummary);
+router.route("/users").get(getAdminUsers);
+router.route("/users/:id").get(getAdminUserById);
+router.route("/users/:id/status").patch(updateAdminUserStatus);
+router.route("/content").get(getAdminContents);
 router.route("/therapists").get(getAllTherapists);
 router.route("/therapists/:id").get(getTherapistById);
 router.route("/therapists/:id/stats").get(getTherapistStats);

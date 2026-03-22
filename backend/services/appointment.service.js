@@ -3,7 +3,7 @@ import Appointment from "../models/appointment.model.js";
 import Therapist from "../models/therapist.model.js";
 import Patient from "../models/patient.model.js";
 import { sendEmail } from "../utils/sendGridEmail.js";
-import { NotFoundError } from "../utils/error.js";
+import { ForbiddenError, NotFoundError } from "../utils/error.js";
 import SessionNote from "../models/sessionNotes.model.js";
 import AvailabilityService from "./availability.service.js";
 import {
@@ -119,6 +119,11 @@ class AppointmentService {
 
     const skip = (page - 1) * limit;
     const appointments = await Appointment.find({ patient: patientId })
+      .sort({ date: -1, createdAt: -1 })
+      .populate(
+        "therapist",
+        "firstName lastName specialization profilePicture address"
+      )
       .limit(limit)
       .skip(skip);
     const total = await Appointment.countDocuments({ patient: patientId });
@@ -232,22 +237,7 @@ class AppointmentService {
     appointment.status = status;
     await appointment.save();
 
-    // Lock the selected slot only when therapist accepts the appointment.
-    if (status === "Accepted") {
-      const availabilityUpdate = await AvailabilityService.updateAvailability(
-        appointment.therapist,
-        appointment.date,
-        appointment.time
-      );
-
-      if (!availabilityUpdate.updated) {
-        const availabilityError = new Error(
-          "Unable to reserve slot for this appointment"
-        );
-        availabilityError.status = 400;
-        throw availabilityError;
-      }
-    }
+    // Slot reservation is handled during booking; acceptance shouldn't re-lock slots.
 
     const baseURL = `${req.protocol}://${req.get("host")}`;
     const appointmentLinkPatient = `${baseURL}/patient/appointments/${appointment._id}`;
@@ -330,10 +320,16 @@ class AppointmentService {
   static async upcomingAppointments(userId, userType) {
     const query =
       userType === "patient" ? { patient: userId } : { therapist: userId };
+
+    // Appointment dates are stored without time-of-day; compare against start of today
+    // so that "today" appointments aren't incorrectly treated as past.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const appointments = await Appointment.find({
       ...query,
-      date: { $gte: new Date() },
-      status: "Accepted",
+      date: { $gte: startOfToday },
+      status: { $in: ["Pending", "Accepted", "Rescheduled"] },
     })
       .sort({ date: 1 })
       .populate("patient", "firstName lastName")
@@ -372,21 +368,53 @@ class AppointmentService {
       throw new NotFoundError("Appointment not found");
     }
 
+    // Authorization: only the patient or therapist on the appointment can cancel
+    const userId = req?.user?._id;
+    const userType = req?.user?.userType;
+    if (userType === "patient") {
+      if (appointment.patient.toString() !== userId.toString()) {
+        throw new ForbiddenError("You do not have permission to cancel this appointment");
+      }
+    } else if (userType === "therapist") {
+      if (appointment.therapist.toString() !== userId.toString()) {
+        throw new ForbiddenError("You do not have permission to cancel this appointment");
+      }
+    } else {
+      throw new ForbiddenError("You do not have permission to cancel this appointment");
+    }
+
     const currentDate = new Date();
     const appointmentDate = new Date(appointment.date);
-    const timeDifference = currentDate - appointmentDate;
-    const hoursDifference = timeDifference / (1000 * 60 * 60);
 
-    if (appointment.status !== "Pending" || hoursDifference <= 48) {
-      throw new Error(
-        "You can only cancel an appointment that is pending and not within 48 hours of the appointment date."
-      );
+    // Only allow cancelling future appointments more than 48 hours away
+    const hoursUntilAppointment =
+      (appointmentDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60);
+
+    const cancellableStatuses = [
+      "Waiting for Payment",
+      "Pending",
+      "Accepted",
+      "Rescheduled",
+    ];
+    if (!cancellableStatuses.includes(appointment.status)) {
+      throw new Error("This appointment cannot be cancelled in its current status.");
+    }
+    if (hoursUntilAppointment < 48) {
+      throw new Error("Appointments cannot be cancelled within 48 hours of the appointment date.");
     }
 
     appointment.status = "Cancelled";
 
     try {
       await appointment.save();
+
+      // Release the slot back to availability.
+      await AvailabilityService.releaseTimeSlot(
+        appointment.therapist,
+        appointment.date,
+        appointment.time
+      );
+
       const baseURL = `${req.protocol}://${req.get("host")}`;
       const appointmentLinkPatient = `${baseURL}/patient/appointments/${appointment._id}`;
 
@@ -403,7 +431,10 @@ class AppointmentService {
             time: appointment.time,
             status: appointment.status,
             link: appointmentLinkPatient,
-            message: "Your appointment has been cancelled by the therapist.",
+            message:
+              req?.user?.userType === "patient"
+                ? "Your appointment has been cancelled by the patient."
+                : "Your appointment has been cancelled by the therapist.",
           },
         }),
         req,

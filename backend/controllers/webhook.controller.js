@@ -2,6 +2,7 @@ import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
 import Payment from "../models/payment.model.js";
 import Appointment from "../models/appointment.model.js";
+import { getFrontendPaymentSuccessUrl } from "../utils/paymentEnv.js";
 dotenv.config();
 
 // Initialize Flutterwave with fallback for missing keys
@@ -139,8 +140,7 @@ export const handleFlutterwaveRedirect = async (req, res) => {
             appointment.status = "Pending";
             await appointment.save();
 
-            // Redirect to a success page
-            return res.redirect("/patient/payment-success-page"); // Adjust this path as needed
+            return res.redirect(getFrontendPaymentSuccessUrl());
           } else {
             return res.status(404).json({ error: "Appointment not found" });
           }

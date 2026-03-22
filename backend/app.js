@@ -24,7 +24,15 @@ import adminSetupRoutes from "./routes/setupAdmin.routes.js";
 
 const app = express();
 
+// After ngrok / reverse proxy: correct req.protocol (https) for redirects
+if (process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1") {
+  app.set("trust proxy", 1);
+}
+
 const __dirname = path.resolve();
+
+// Serve uploaded files (local storage)
+app.use("/uploads", express.static(path.join(__dirname, "backend", "uploads")));
 
 app.use(
   cors({

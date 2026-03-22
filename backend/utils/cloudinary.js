@@ -30,10 +30,10 @@ const uploadFilesToCloudinary = async (files) => {
   console.log(files);
   try {
     const uploadPromises = files.map(async (file) => {
-      const { filePath, folderName } = file;
+      const { filePath, folderName, resourceType } = file;
       const result = await cloudinary.uploader.upload(filePath, {
         folder: folderName,
-        resource_type: "auto",
+        resource_type: resourceType || "auto",
         overwrite: true,
         invalidate: true,
       });

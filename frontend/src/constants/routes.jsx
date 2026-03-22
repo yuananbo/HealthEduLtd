@@ -1,9 +1,8 @@
 export const patientRoutes = [
   { path: "/patient/", name: "Dashboard" },
-  { path: "/patient/therapist-list", name: "Therapists" },
+  { path: "/patient/home-care", name: "Assisted Home Care" },
   { path: "/patient/appointments", name: "Appointments" },
   { path: "/patient/profile", name: "Profile" },
-  { path: "/patient/settings", name: "Settings" },
 ];
 
 export const therapistRoutes = [
@@ -17,6 +16,7 @@ export const therapistRoutes = [
 export const adminRoutes = [
   { path: "/admin/", name: "MainDashboard" },
   { path: "/admin/content", name: "Content" },
+  { path: "/admin/users", name: "Users" },
   { path: "/admin/therapists", name: "Therapist" },
   // { path: "/therapist/settings", name: "Settings" },
   // { path: "/therapist/profile", name: "Profile" },

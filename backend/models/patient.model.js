@@ -18,6 +18,14 @@ const medicationSchema = new mongoose.Schema({
   frequency: String
 });
 
+const prescriptionSchema = new mongoose.Schema({
+  url: String,
+  originalName: String,
+  storage: { type: String, enum: ["cloudinary", "local"], default: "cloudinary" },
+  localFileName: { type: String, default: "" },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
 const patientSchema = new mongoose.Schema(
   {
     patientId: {
@@ -78,6 +86,14 @@ const patientSchema = new mongoose.Schema(
         type: String,
       },
     },
+    buildingNumber: {
+      type: String,
+      default: "",
+    },
+    postalCode: {
+      type: String,
+      default: "",
+    },
     password: {
       type: String,
       required: true,
@@ -87,9 +103,20 @@ const patientSchema = new mongoose.Schema(
       type: String,
       default: "patient",
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+    },
     medicalHistory: [medicalHistorySchema],
     vitals: [vitalSchema],
     medications: [medicationSchema],
+    prescriptions: {
+      type: [prescriptionSchema],
+      default: [],
+    },
     emergencyContact: {
       type: String,
     },
@@ -107,6 +134,18 @@ const patientSchema = new mongoose.Schema(
     },
     savedEducationContents: {
       type: [String],
+      default: [],
+    },
+    cartItems: {
+      type: [
+        {
+          deviceId: { type: String, required: true },
+          name: { type: String, required: true },
+          unitPrice: { type: Number, required: true },
+          quantity: { type: Number, required: true, min: 1, default: 1 },
+          addedAt: { type: Date, default: Date.now },
+        },
+      ],
       default: [],
     },
   },

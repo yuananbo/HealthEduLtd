@@ -5,7 +5,8 @@ import generateToken from "../../utils/generateToken.js";
 import Therapist from "../../models/therapist.model.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { sendPasswordResetEmail } from "../../utils/sendGridEmail.js";
-import { uploadFilesToCloudinary } from "../../utils/cloudinary.js";
+import path from "path";
+import fs from "fs/promises";
 
 const createSendToken = (user, statusCode, res) => {
   const token = generateToken(user._id, user.userType, res);
@@ -104,6 +105,17 @@ export const loginPatient = async (req, res) => {
       });
     }
 
+    if (patient.isActive === false) {
+      return res.status(400).json({
+        message: "Account is inactive. Please contact support.",
+      });
+    }
+
+    await Patient.updateOne(
+      { _id: patient._id },
+      { $set: { lastLogin: new Date() } }
+    );
+
     const user = await Patient.findById(patient._id).select("-password");
     createSendToken(user, 200, res);
   } catch (error) {
@@ -176,13 +188,47 @@ export const editPatientProfile = async (req, res) => {
       email,
       phoneNumber,
       guardianPhoneNumber,
-      address,
+      address: rawAddress,
       gender,
       dateOfBirth,
       height,
       weight,
       bloodType,
+      buildingNumber,
+      postalCode,
+      vitals: rawVitals,
+      medications: rawMedications,
+      medicalHistory: rawMedicalHistory,
     } = req.body;
+
+    const parseJsonIfString = (value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value !== "string") return value;
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      try {
+        return JSON.parse(trimmed);
+      } catch (_) {
+        return value;
+      }
+    };
+
+    let address =
+      typeof rawAddress === "string" ? parseJsonIfString(rawAddress) : rawAddress;
+    // Backwards compatibility: handle multipart keys like "address.country"
+    if (!address) {
+      const country = req.body["address.country"];
+      const city = req.body["address.city"];
+      const district = req.body["address.district"];
+      const street = req.body["address.street"];
+      if (country || city || district || street) {
+        address = { country, city, district, street };
+      }
+    }
+
+    const vitals = parseJsonIfString(rawVitals);
+    const medications = parseJsonIfString(rawMedications);
+    const medicalHistory = parseJsonIfString(rawMedicalHistory);
 
     // Update the patient's profile information (except password)
     patient.firstName = firstName || patient.firstName;
@@ -194,6 +240,8 @@ export const editPatientProfile = async (req, res) => {
       guardianPhoneNumber || patient.guardianPhoneNumber;
 
     patient.dateOfBirth = dateOfBirth || patient.dateOfBirth;
+    if (buildingNumber !== undefined) patient.buildingNumber = buildingNumber;
+    if (postalCode !== undefined) patient.postalCode = postalCode;
     const numHeight = Number(height);
     if (height !== undefined && height !== "" && !isNaN(numHeight))
       patient.height = numHeight;
@@ -205,24 +253,70 @@ export const editPatientProfile = async (req, res) => {
     // Update profile picture if provided
     if (req.files && req.files.profilePicture) {
       const profilePicturePath = req.files.profilePicture[0].path;
-
-      const file = [
-        { filePath: profilePicturePath, folderName: "profilePicture" },
-      ];
-
-      // Upload to Cloudinary
-      const uploadPicture = await uploadFilesToCloudinary(file);
-      if (uploadPicture) {
-        patient.profilePicture = uploadPicture[0].secure_url;
-      }
+      const localFileName = path.basename(profilePicturePath);
+      const localUrl = `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/${encodeURIComponent(localFileName)}`;
+      patient.profilePicture = localUrl;
     }
 
     // Update address if provided
     if (address) {
-      patient.address.country = address.country || patient.address.country;
-      patient.address.city = address.city || patient.address.city;
-      patient.address.district = address.district || patient.address.district;
-      patient.address.street = address.street || patient.address.street;
+      patient.address.country = address.country ?? patient.address.country;
+      patient.address.city = address.city ?? patient.address.city;
+      patient.address.district = address.district ?? patient.address.district;
+      patient.address.street = address.street ?? patient.address.street;
+    }
+
+    if (Array.isArray(vitals)) {
+      patient.vitals = vitals.map((v) => ({
+        type: v?.type ?? "",
+        value: v?.value ?? "",
+        unit: v?.unit ?? "",
+      }));
+    }
+
+    if (Array.isArray(medications)) {
+      patient.medications = medications.map((m) => ({
+        name: m?.name ?? "",
+        dosage: m?.dosage ?? "",
+        frequency: m?.frequency ?? "",
+      }));
+    }
+
+    if (Array.isArray(medicalHistory)) {
+      patient.medicalHistory = medicalHistory
+        .filter((h) => h && (h.condition || h.diagnosedDate))
+        .map((h) => ({
+          condition: h?.condition ?? "",
+          diagnosedDate: h?.diagnosedDate ? new Date(h.diagnosedDate) : null,
+        }));
+    }
+
+    if (req.files && req.files.prescription && req.files.prescription[0]) {
+      try {
+        const prescriptionPath = req.files.prescription[0].path;
+        const originalName = req.files.prescription[0].originalname;
+        const localFileName = path.basename(prescriptionPath);
+        const localUrl = `${req.protocol}://${req.get(
+          "host"
+        )}/uploads/${encodeURIComponent(localFileName)}`;
+
+        patient.prescriptions = Array.isArray(patient.prescriptions)
+          ? patient.prescriptions
+          : [];
+        patient.prescriptions.push({
+          url: localUrl,
+          originalName,
+          storage: "local",
+          localFileName,
+          uploadedAt: new Date(),
+        });
+      } catch (e) {
+        return res.status(500).json({
+          message: e?.message || "Failed to upload prescription",
+        });
+      }
     }
 
     // Save the updated patient profile
@@ -415,4 +509,36 @@ export const deleteMedicalHistory = asyncHandler(async (req, res) => {
     console.log(e);
     res.status(500).json({ message: e ? e.message : "Internal server error" });
   }
+});
+
+export const deletePrescription = asyncHandler(async (req, res) => {
+  const patientId = req.user._id;
+  const { prescriptionId } = req.params;
+
+  const patient = await Patient.findById(patientId);
+  if (!patient) {
+    return res.status(404).json({ message: "Patient not found" });
+  }
+
+  const list = Array.isArray(patient.prescriptions) ? patient.prescriptions : [];
+  const idx = list.findIndex((p) => String(p?._id) === String(prescriptionId));
+  if (idx === -1) {
+    return res.status(404).json({ message: "Prescription not found" });
+  }
+
+  const toDelete = list[idx];
+  patient.prescriptions.splice(idx, 1);
+  await patient.save();
+
+  if (toDelete?.storage === "local" && toDelete?.localFileName) {
+    try {
+      await fs.unlink(
+        path.join(process.cwd(), "backend", "uploads", toDelete.localFileName)
+      );
+    } catch (_) {
+      // ignore missing file
+    }
+  }
+
+  return res.status(200).json({ message: "Prescription deleted", patient });
 });

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FaHome,
-  FaUserMd,
   FaWheelchair,
   FaBookMedical,
 } from "react-icons/fa";
@@ -19,24 +18,15 @@ const cardVariants = {
 
 const services = [
   {
-    title: "Home Care Rehab",
-    description: "Rehabilitation services at home with scheduled visits.",
+    title: "Assisted Home Care",
+    description:
+      "Professional care both at home or online meeting: therapy, chronic care, mental health, and nutrition.",
     icon: FaHome,
     path: "/patient/home-care",
     color: "blue",
     bgClass: "bg-blue-500",
     hoverClass: "hover:bg-blue-600",
     textClass: "text-blue-600",
-  },
-  {
-    title: "Therapist Appointment",
-    description: "Book an in-person or telehealth appointment with a therapist.",
-    icon: FaUserMd,
-    path: "/patient/therapist-list",
-    color: "green",
-    bgClass: "bg-green-500",
-    hoverClass: "hover:bg-green-600",
-    textClass: "text-green-600",
   },
   {
     title: "Assistive Device",

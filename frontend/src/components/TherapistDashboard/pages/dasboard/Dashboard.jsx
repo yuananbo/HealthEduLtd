@@ -3,23 +3,8 @@ import TherapistProfile from "./TherapistProfile";
 import UpcomingAppointments from "./UpcomingAppointments";
 import StatCard from "./StatCard";
 import Chart from "./Chart";
-import useDataFetching from "../../../../hooks/useFech";
 import api from "../../../../utils/api";
 import { UserContext } from "../../../../context/UserContext";
-// Mock data
-
-const patients = [
-  { id: 1, name: "John Doe", age: 35, lastVisit: "2024-07-15" },
-  { id: 2, name: "Jane Smith", age: 28, lastVisit: "2024-07-20" },
-  { id: 3, name: "Bob Johnson", age: 42, lastVisit: "2024-07-25" },
-];
-
-const chartData = [
-  { month: "Jan", patients: 50, appointments: 100, income: 10000 },
-  { month: "Feb", patients: 60, appointments: 120, income: 12000 },
-  { month: "Mar", patients: 75, appointments: 150, income: 15000 },
-  // ... more data
-];
 
 const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -50,18 +35,29 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (currentUser && currentUser.token) {
+    if (currentUser?.token) {
       getTherapistStats();
     }
-  }, [currentUser.token]);
+  }, [currentUser?.token]);
 
-  console.log("data:", data);
-
+  /**
+   * Design Pattern: Adapter (ViewModel mapper)
+   * Why here: backend payload is normalized, but cards need display-safe values/format.
+   * Problem solved: prevents UI breakage from null/undefined raw fields.
+   * Extensibility/Maintainability: card rendering stays simple; formatting/default rules live in one place.
+   */
   const stats = [
-    { title: "Appointments", value: data?.totalAppointments, icon: "calendar" },
-    { title: "Patients", value: data?.totalPatients, icon: "users" },
-    { title: "Income", value: `${data?.totalIncome}`, icon: "dollar-sign" },
-    { title: "Rating", value: `${data?.overallRating}`, icon: "star" },
+    { title: "Appointments", value: data?.totalAppointments ?? 0, icon: "calendar" },
+    { title: "Patients", value: data?.totalPatients ?? 0, icon: "users" },
+    { title: "Income", value: data?.totalIncome ?? 0, icon: "dollar-sign" },
+    {
+      title: "Rating",
+      value:
+        typeof data?.overallRating === "number"
+          ? data.overallRating.toFixed(1)
+          : "0.0",
+      icon: "star",
+    },
   ];
 
   return (
@@ -108,7 +104,13 @@ const Dashboard = () => {
               <h2 className="text-xl font-semibold mb-4">
                 Performance Overview
               </h2>
-              <Chart darkMode={darkMode} data={chartData} />
+              {loading ? (
+                <p className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                  Loading performance...
+                </p>
+              ) : (
+                <Chart darkMode={darkMode} data={data?.performanceOverview || []} />
+              )}
             </div>
 
             {/* Patients Table */}
@@ -138,22 +140,38 @@ const Dashboard = () => {
                       darkMode ? "divide-gray-700" : "divide-gray-200"
                     }`}
                   >
-                    {patients.map((patient) => (
-                      <tr
-                        key={patient.id}
-                        className="hover:bg-opacity-10 hover:bg-gray-200 transition-colors duration-200"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {patient.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {patient.age}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {patient.lastVisit}
+                    {loading ? (
+                      <tr>
+                        <td className="px-6 py-4" colSpan={3}>
+                          Loading patients...
                         </td>
                       </tr>
-                    ))}
+                    ) : data?.recentPatients?.length > 0 ? (
+                      data.recentPatients.map((patient) => (
+                        <tr
+                          key={patient.id}
+                          className="hover:bg-opacity-10 hover:bg-gray-200 transition-colors duration-200"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {patient.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {patient.age ?? "N/A"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {patient.lastVisit
+                              ? new Date(patient.lastVisit).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-6 py-4" colSpan={3}>
+                          No patient data yet.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

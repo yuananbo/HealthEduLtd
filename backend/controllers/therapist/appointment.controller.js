@@ -1,5 +1,6 @@
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import AppointmentService from "../../services/appointment.service.js";
+import Payment from "../../models/payment.model.js";
 import { ForbiddenError } from "../../utils/error.js";
 
 // Get all appointments for the current user
@@ -54,9 +55,18 @@ export const getAppointmentDetails = asyncHandler(async (req, res) => {
     );
   }
 
+  const consultationPaid = await Payment.exists({
+    appointment: appointment._id,
+    purpose: "consultation",
+    status: "success",
+  });
+
+  const payload = appointment.toObject ? appointment.toObject() : appointment;
+  payload.consultationFeePaid = !!consultationPaid;
+
   res.status(200).json({
     success: true,
-    data: appointment,
+    data: payload,
   });
 });
 
@@ -120,7 +130,7 @@ export const getUpcomingAppointments = asyncHandler(async (req, res) => {
   }
 });
 
-// Cancel an existing appointment and refund the payment  to the account associated with the appointment
+// Cancel an existing appointment and refund the payment to the account associated with the appointment
 export const cancelAppointment = asyncHandler(async (req, res) => {
   const appointmentId = req.params.id;
   const result = await AppointmentService.cancelAppointment(appointmentId, req);
