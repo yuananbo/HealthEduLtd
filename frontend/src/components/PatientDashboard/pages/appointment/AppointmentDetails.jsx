@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
   FiCalendar,
@@ -17,6 +17,20 @@ import Input from "../../../common/forms/Input";
 import Button from "../../../common/Button";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
+import { UserContext } from "../../../../context/UserContext";
+
+const StarButton = ({ filled, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`text-3xl transition-colors ${
+      filled ? "text-yellow-400" : "text-gray-300 hover:text-yellow-300"
+    }`}
+    aria-label="Select rating star"
+  >
+    ★
+  </button>
+);
 import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
 
 const DEFAULT_CONSULTATION_AMOUNT = 5000;
@@ -27,8 +41,14 @@ const AppointmentDetails = () => {
   const [consultationPaying, setConsultationPaying] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [notes, setNotes] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [existingReview, setExistingReview] = useState(null);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useContext(UserContext);
   const {
     appointment,
     loading: appointmentLoading,
@@ -38,6 +58,42 @@ const AppointmentDetails = () => {
   const { loading, error, therapist } = useTherapistDetails(
     appointment?.data?.therapist
   );
+
+  useEffect(() => {
+    const fetchExistingReview = async () => {
+      const therapistId = appointment?.data?.therapist;
+      const patientId = currentUser?.data?.user?._id;
+      const isCompleted = appointment?.data?.status === "Completed";
+
+      if (!therapistId || !patientId || !isCompleted) {
+        setExistingReview(null);
+        return;
+      }
+
+      try {
+        setRatingsLoading(true);
+        const response = await api.get(`/rating/${therapistId}`);
+        const ratings = Array.isArray(response?.data?.therapist?.ratings)
+          ? response.data.therapist.ratings
+          : [];
+        const matchedReview = ratings.find(
+          (item) => String(item?.patient?._id) === String(patientId)
+        );
+
+        setExistingReview(matchedReview || null);
+        if (matchedReview) {
+          setReviewRating(Number(matchedReview.rating) || 0);
+          setReviewText(matchedReview.review || "");
+        }
+      } catch (fetchError) {
+        console.error("Error fetching therapist ratings:", fetchError);
+      } finally {
+        setRatingsLoading(false);
+      }
+    };
+
+    fetchExistingReview();
+  }, [appointment?.data?.status, appointment?.data?.therapist, currentUser?.data?.user?._id]);
 
   if (appointmentLoading || loading) {
     return <Loading />;
@@ -80,6 +136,35 @@ const AppointmentDetails = () => {
     console.log("Starting chat with therapist");
   };
 
+  const handleSubmitReview = async () => {
+    if (!appointment?.data?.therapist) return;
+    if (reviewRating < 1 || reviewRating > 5) {
+      toast.error("Please select a rating before submitting");
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      const response = await api.post(`/rating/${appointment.data.therapist}`, {
+        rating: reviewRating,
+        review: reviewText.trim(),
+      });
+
+      setExistingReview(response?.data?.rating || {
+        rating: reviewRating,
+        review: reviewText.trim(),
+        createdAt: new Date().toISOString(),
+      });
+      toast.success("Thank you for your feedback");
+    } catch (submitError) {
+      const message =
+        submitError?.response?.data?.message ||
+        submitError?.message ||
+        "Failed to submit your review";
+      toast.error(message);
+    } finally {
+      setSubmittingReview(false);
+      
   const handlePayConsultationFee = async () => {
     if (!id) return;
     try {
@@ -395,6 +480,79 @@ const AppointmentDetails = () => {
                   <FiMessageCircle className="mr-2" /> Start Chat
                 </button>
               </div>
+            </div>
+          )}
+
+          {appointment?.data?.status === "Completed" && (
+            <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-5">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Rate Your Therapist
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Share a star rating and an optional review for this completed appointment.
+              </p>
+
+              {ratingsLoading ? (
+                <p className="text-sm text-gray-500">Loading your review...</p>
+              ) : existingReview ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`text-3xl ${
+                          star <= Number(existingReview?.rating || 0)
+                            ? "text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    {(existingReview?.review || "").trim()
+                      ? existingReview.review
+                      : "You submitted a rating without a written review."}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Submitted: {new Date(existingReview?.createdAt || Date.now()).toLocaleDateString()}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <StarButton
+                        key={star}
+                        filled={star <= reviewRating}
+                        onClick={() => setReviewRating(star)}
+                      />
+                    ))}
+                  </div>
+
+                  <Input
+                    value={reviewText}
+                    handleChange={(e) => setReviewText(e.target.value)}
+                    labelText="Review (optional)"
+                    labelFor="review"
+                    id="review"
+                    name="review"
+                    type="textarea"
+                    component="textarea"
+                    placeholder="How was your experience with this therapist?"
+                  />
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSubmitReview}
+                      label={submittingReview ? "Submitting..." : "Submit Review"}
+                      variant="filled"
+                      disabled={submittingReview}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

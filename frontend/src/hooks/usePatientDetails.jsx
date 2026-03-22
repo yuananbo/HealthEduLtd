@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import { useState, useContext, useCallback } from "react";
 import { UserContext } from "../context/UserContext";
 import api from "../utils/api";
 
@@ -8,34 +8,39 @@ const usePatientDetails = () => {
   const [patient, setPatient] = useState(null);
   const { currentUser } = useContext(UserContext);
 
-  const fetchPatientDetails = async (patientId) => {
-    if (!patientId) {
-      setError("No patient ID provided");
-      setLoading(false);
-      return;
-    }
-    if (!currentUser?.token) {
-      setError("No user token available");
-      setLoading(false);
-      return;
-    }
+  const fetchPatientDetails = useCallback(
+    async (patientId) => {
+      if (!patientId) {
+        setError("No patient ID provided");
+        setLoading(false);
+        return;
+      }
+      if (!currentUser?.token) {
+        setError("No user token available");
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const response = await api.get(`/patient/${patientId}`, {
-        headers: {
-          Authorization: `Bearer ${currentUser.token}`,
-        },
-      });
-      setPatient(response.data);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching patient details:", err);
-      setError(
-        err.response?.data?.message || "Failed to fetch patient details"
-      );
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.get(`/patient/${patientId}`, {
+          headers: {
+            Authorization: `Bearer ${currentUser.token}`,
+          },
+        });
+        setPatient(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching patient details:", err);
+        setError(
+          err.response?.data?.message || "Failed to fetch patient details"
+        );
+        setLoading(false);
+      }
+    },
+    [currentUser?.token]
+  );
 
   return { loading, error, patient, fetchPatientDetails };
 };

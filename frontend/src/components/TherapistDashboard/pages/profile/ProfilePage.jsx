@@ -13,7 +13,6 @@ import api from "../../../../utils/api";
 import useDataFetching from "../../../../hooks/useFech";
 
 const ProfilePage = () => {
-  const [therapist, setTherapist] = useState([]);
   const [activeTab, setActiveTab] = useState("personal");
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useContext(UserContext);
@@ -58,17 +57,6 @@ const ProfilePage = () => {
     password: "",
     confirmPassword: "",
   });
-
-  const handleInputChange = (field, value) => {
-    setTherapist((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddressChange = (field, value) => {
-    setTherapist((prev) => ({
-      ...prev,
-      address: { ...prev.address, [field]: value },
-    }));
-  };
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -177,7 +165,12 @@ const ProfilePage = () => {
       </>
     ),
     security: <SecurityTab />,
-    ratings: <RatingsTab therapist={therapist} />,
+    ratings: (
+      <RatingsTab
+        therapist={therapistData?.therapist}
+        averageRating={therapistData?.averageRating}
+      />
+    ),
   };
 
   const tabVariants = {
