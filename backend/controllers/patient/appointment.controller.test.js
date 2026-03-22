@@ -19,6 +19,11 @@ const appointmentServiceMocks = vi.hoisted(() => ({
   findAppointmentsByPatient: vi.fn(),
   rescheduleAppointment: vi.fn(),
   cancelAppointment: vi.fn(),
+  appendStatusHistory: vi.fn(),
+  updateStatusWithHistory: vi.fn(async (appointment, update) => {
+    appointment.status = update.status;
+    return appointment;
+  }),
 }));
 
 vi.mock("../../services/appointment.service.js", () => ({
