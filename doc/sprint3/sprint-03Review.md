@@ -26,6 +26,7 @@ Sprint 3 built on **develop 2.0** toward **develop 3.0**, focusing on hardening 
  * **Document payment modes for demos and QA**: Short runbook: required env vars, mock vs live behavior, and expected appointment statuses after pay-now / pay-later.
  * **Continue minimum sync cadence**: Keep at least two team meetings per week through exam periods.
  * **Pre-release checklist on develop**: Before tagging branches (e.g. **develop 3.0**), run shared checklist: patient book → pay (mock) → status → admin views → therapist rating.
+ * **Move from local-only to real hosting and data**: The product is **not yet deployed to a production domain** and is **not connected to a managed production database**. To date, **development and automated tests run on team members’ local machines** (local DB instances). Next iterations should plan provisioning of a stable **hosted environment**, **DNS/domain**, and a **shared or production-grade database** so demos and UAT reflect real deployment conditions.
 
 ## Product - Review
 
@@ -35,6 +36,8 @@ Sprint 3 built on **develop 2.0** toward **develop 3.0**, focusing on hardening 
  * **Appointment bugs and UX fixes**: Resolved issues tied to **search and filters**—including **misalignment** of listed appointments vs selected **date** when timezones differ from stored UTC, and **empty search** states that should still show search/filter affordances. (Evidence: appointment list logic such as local calendar-day matching; frontend and backend tests)
  * **Administrator dashboard**: Extended and refined admin dashboard capabilities for operational visibility (building on Sprint 2 KPI work). (Evidence: admin dashboard pages and related APIs), administrator can now publish new education content for patients and are able to view all therapists and patients information.
  * **Therapist ratings**: Patients can submit **star ratings and optional text reviews**; therapists can see aggregated and per-review feedback (e.g. profile ratings tab, backend `TherapistRating` model and APIs). (Evidence: `therapistRating.model.js`, common service/controller routes, `RatingsTab` and related UI)
+ * **User profile and medical history**: Fixed the bug where the **user profile could not be updated**. Patients can now **edit their profile**, **add or update medical history**, and **upload supporting documents** (e.g. **PDF** files) as part of their record. (Evidence: patient profile UI and related API/upload handling)
+ * **Purchase assistive devices**: Added **assistive device purchasing** so patients can **browse and buy relevant medical / rehabilitation devices** through the platform flow. (Evidence: assistive device purchase UI and backend order or catalog integration)
 
 #### Goals and/or tasks that were planned but not met/completed:
 
@@ -50,3 +53,4 @@ Going into the next iteration, our main insights are:
  * **Mock payment is a deliberate trade-off** for insecure dev environments—it must stay clearly separated from production configuration.
  * **Ratings close the feedback loop** between patients and therapists; monitor data quality and moderation needs as usage grows.
  * **Keep regression tests** for search, date filters, and payment branches whenever appointment logic changes.
+ * **Local-first delivery**: Until we deploy to a real domain and shared database, treat **local development and tests** as the source of truth and plan the next sprint for **hosted staging/production** alignment.
