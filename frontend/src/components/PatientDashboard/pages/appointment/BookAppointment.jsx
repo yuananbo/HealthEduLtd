@@ -272,19 +272,6 @@ const BookAppointment = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
-            <h2 className="text-2xl font-bold mb-4">Payment Details</h2>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-3xl font-bold">5,000 RWF</p>
-                <p className="text-sm opacity-75 mt-1">Appointment cost</p>
-              </div>
-              <div className="bg-white text-blue-600 py-2 px-4 rounded-full font-semibold">
-                Secure Appointment Now
-              </div>
-            </div>
-          </div>
-
           <div className="flex flex-col sm:flex-row justify-end gap-4">
             <button
               type="button"

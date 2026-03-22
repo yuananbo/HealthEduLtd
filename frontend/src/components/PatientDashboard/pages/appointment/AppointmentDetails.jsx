@@ -17,9 +17,14 @@ import Input from "../../../common/forms/Input";
 import Button from "../../../common/Button";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
+import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
+
+const DEFAULT_CONSULTATION_AMOUNT = 5000;
+const DEFAULT_CURRENCY = "RWF";
 
 const AppointmentDetails = () => {
   const [showNotes, setShowNotes] = useState(false);
+  const [consultationPaying, setConsultationPaying] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const { id } = useParams();
@@ -73,6 +78,37 @@ const AppointmentDetails = () => {
   const handleStartChat = () => {
     // Implement chat logic
     console.log("Starting chat with therapist");
+  };
+
+  const handlePayConsultationFee = async () => {
+    if (!id) return;
+    try {
+      setConsultationPaying(true);
+      const response = await api.post(
+        `/patient/appointments/${id}/pay-consultation`,
+        {
+          amount: DEFAULT_CONSULTATION_AMOUNT,
+          currency: DEFAULT_CURRENCY,
+        }
+      );
+      const pr = response.data?.paymentResponse;
+      const redirect = getPaymentRedirectUrl(pr);
+      if (redirect) {
+        window.location.href = redirect;
+      } else {
+        toast.success("Consultation fee paid successfully.");
+        navigate("/patient/payment-success-page");
+      }
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Could not process payment";
+      toast.error(msg);
+    } finally {
+      setConsultationPaying(false);
+    }
   };
 
   return (
@@ -227,7 +263,37 @@ const AppointmentDetails = () => {
                   Book Appointment
                 </Link>
               </div>
-            ) : (
+            ) : appointment?.data?.status === "Completed" ? (
+              <div className="w-full p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-800">
+                      Appointment Completed
+                    </h3>
+                    {appointment?.data?.consultationFeePaid ? (
+                      <p className="text-sm text-green-600 mt-1">
+                        Consultation fee has been paid. Thank you.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-600 mt-1">
+                        Please pay the consultation fee for this visit (booking
+                        fee was paid when you scheduled).
+                      </p>
+                    )}
+                  </div>
+                  {!appointment?.data?.consultationFeePaid && (
+                    <button
+                      type="button"
+                      onClick={handlePayConsultationFee}
+                      disabled={consultationPaying}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap"
+                    >
+                      {consultationPaying ? "Processing…" : "Pay Consultation Fee"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : appointment?.data?.status === "Cancelled" ? null : (
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={() => setIsRescheduleModalOpen(true)}

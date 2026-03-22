@@ -143,32 +143,6 @@ const Appointments = () => {
     );
   }
 
-  // Check if there are no appointments
-  if (!filteredData || filteredData.length === 0) {
-    return (
-      <div className="p-4 md:p-6 bg-white">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Appointments</h1>
-        </div>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-            No appointments yet
-          </h2>
-          <p className="text-gray-500 mb-8">
-            Book your first appointment to get started
-          </p>
-          <Link
-            to="/patient/home-care"
-            className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-3 px-6 rounded inline-flex items-center transition duration-150 ease-in-out"
-          >
-            <FiPlus className="mr-2" />
-            Book Appointment
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-6 bg-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -250,50 +224,70 @@ const Appointments = () => {
         </div>
       )}
 
-      <div className="overflow-x-auto shadow-md sm:rounded-lg">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-            <tr>
-              <th scope="col" className="p-4">
-                <input
-                  type="checkbox"
-                  checked={selectedAppointments.length === filteredData.length}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 text-greenPrimary bg-gray-100 border-gray-300 rounded focus:ring-hoverColor"
+      {filteredData.length === 0 ? (
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+            No appointments found
+          </h2>
+          <p className="text-gray-500 mb-8">
+            {data?.data?.length === 0
+              ? "Book your first appointment to get started"
+              : "Try adjusting your search or filters"}
+          </p>
+          <Link
+            to="/patient/home-care"
+            className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-3 px-6 rounded inline-flex items-center transition duration-150 ease-in-out"
+          >
+            <FiPlus className="mr-2" />
+            Book Appointment
+          </Link>
+        </div>
+      ) : (
+        <div className="overflow-x-auto shadow-md sm:rounded-lg">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" className="p-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedAppointments.length === filteredData.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-greenPrimary bg-gray-100 border-gray-300 rounded focus:ring-hoverColor"
+                  />
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Therapist
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Appointment Date
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Appointment Time
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Created At
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((appointment) => (
+                <AppointmentItem
+                  key={appointment._id}
+                  appointment={appointment}
+                  isSelected={selectedAppointments.includes(appointment._id)}
+                  onSelect={() => handleSelect(appointment._id)}
                 />
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Therapist
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Appointment Date
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Appointment Time
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Created At
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((appointment) => (
-              <AppointmentItem
-                key={appointment._id}
-                appointment={appointment}
-                isSelected={selectedAppointments.includes(appointment._id)}
-                onSelect={() => handleSelect(appointment._id)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
