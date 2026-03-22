@@ -9,6 +9,46 @@ const appointmentNotesSchema = new mongoose.Schema(
   { timestamps: true, _id: false }
 );
 
+const appointmentStatusHistorySchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      required: true,
+    },
+    fromStatus: {
+      type: String,
+      default: "",
+    },
+    changedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    source: {
+      type: String,
+      default: "system",
+    },
+    reason: {
+      type: String,
+      default: "",
+    },
+    changedBy: {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null,
+      },
+      userType: {
+        type: String,
+        default: "system",
+      },
+      name: {
+        type: String,
+        default: "",
+      },
+    },
+  },
+  { _id: false }
+);
+
 const appointmentSchema = new mongoose.Schema({
   patient: {
     type: mongoose.Schema.Types.ObjectId,
@@ -71,6 +111,10 @@ const appointmentSchema = new mongoose.Schema({
       ref: "SessionNote",
     },
   ],
+  statusHistory: {
+    type: [appointmentStatusHistorySchema],
+    default: [],
+  },
   createdAt: {
     type: Date,
     default: Date.now,

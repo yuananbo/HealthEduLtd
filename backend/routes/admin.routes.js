@@ -8,6 +8,8 @@ import {
   createAdmin,
   createSuperAdmin,
   disapproveTherapist,
+  getAdminBookingById,
+  getAdminBookings,
   getAdminContents,
   getAdminUserById,
   getAdminUsers,
@@ -18,6 +20,7 @@ import {
   getTherapistStats,
   loginAdmin,
   logoutAdmin,
+  updateAdminBookingStatus,
   updateAdminContent,
   updateAdminContentStatus,
   updateAdminUserStatus,
@@ -52,6 +55,11 @@ router.route("/users").get(getAdminUsers);
 router.route("/users/:id").get(getAdminUserById);
 router.route("/users/:id/status").patch(updateAdminUserStatus);
 router.route("/content").get(getAdminContents);
+router.route("/bookings").get(getAdminBookings);
+router
+  .route("/bookings/:id")
+  .get(getAdminBookingById)
+  .patch(updateAdminBookingStatus);
 router.route("/therapists").get(getAllTherapists);
 router.route("/therapists/:id").get(getTherapistById);
 router.route("/therapists/:id/stats").get(getTherapistStats);

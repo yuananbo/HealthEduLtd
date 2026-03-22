@@ -2,11 +2,22 @@ import mongoose from "mongoose";
 import Admin from "../models/admin.model.js";
 import Therapist from "../models/therapist.model.js";
 import Appointment from "../models/appointment.model.js";
+import AppointmentService from "./appointment.service.js";
 import generateToken from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendGridEmail.js";
 import { therapistAccountStatusChangeTemplate } from "../utils/emailTemplates.js";
 
 class AdminService {
+  static BOOKING_STATUS_OPTIONS = [
+    "Pending",
+    "Accepted",
+    "Declined",
+    "Completed",
+    "Cancelled",
+    "Rescheduled",
+    "Waiting for Payment",
+  ];
+
   static async createSuperAdmin(email, password, res) {
     try {
       const existingSuperAdmin = await Admin.findOne({ role: "super-admin" });
@@ -485,15 +496,7 @@ class AdminService {
 
       const skip = (pageNum - 1) * limitNum;
 
-      const statusOptions = [
-        "Pending",
-        "Accepted",
-        "Declined",
-        "Completed",
-        "Cancelled",
-        "Rescheduled",
-        "Waiting for Payment",
-      ];
+      const statusOptions = AdminService.BOOKING_STATUS_OPTIONS;
 
       const [result] = await Appointment.aggregate([
         { $match: { therapist: therapistObjectId } },
@@ -586,6 +589,276 @@ class AdminService {
       };
     } catch (error) {
       console.log("Error in AdminService.getTherapistAppointments", error);
+      throw error;
+    }
+  }
+
+  static async getAdminBookings(adminId, query = {}) {
+    try {
+      const admin = await Admin.findById(adminId);
+      if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
+        throw new Error(
+          "Unauthorized: Only super-admin or admin can access this resource"
+        );
+      }
+
+      const {
+        search = "",
+        status = "all",
+        page = 1,
+        limit = 10,
+        sortOrder = "desc",
+      } = query;
+
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+      const skip = (pageNum - 1) * limitNum;
+      const normalizedSearch = search.trim();
+
+      const filters = {};
+      if (status !== "all") {
+        filters.status = status;
+      }
+
+      const searchRegex = normalizedSearch
+        ? new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
+        : null;
+
+      const aggregationPipeline = [
+        { $match: filters },
+        {
+          $lookup: {
+            from: "patients",
+            localField: "patient",
+            foreignField: "_id",
+            as: "patientInfo",
+          },
+        },
+        {
+          $lookup: {
+            from: "therapists",
+            localField: "therapist",
+            foreignField: "_id",
+            as: "therapistInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$patientInfo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$therapistInfo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+      ];
+
+      if (searchRegex) {
+        aggregationPipeline.push({
+          $match: {
+            $or: [
+              { service: searchRegex },
+              { status: searchRegex },
+              { time: searchRegex },
+              { purpose: searchRegex },
+              { "patientInfo.firstName": searchRegex },
+              { "patientInfo.lastName": searchRegex },
+              { "patientInfo.email": searchRegex },
+              { "therapistInfo.firstName": searchRegex },
+              { "therapistInfo.lastName": searchRegex },
+              { "therapistInfo.email": searchRegex },
+            ],
+          },
+        });
+      }
+
+      const [result] = await Appointment.aggregate([
+        ...aggregationPipeline,
+        {
+          $facet: {
+            metadata: [{ $count: "total" }],
+            bookings: [
+              {
+                $sort: {
+                  date: sortOrder === "asc" ? 1 : -1,
+                  time: sortOrder === "asc" ? 1 : -1,
+                  createdAt: sortOrder === "asc" ? 1 : -1,
+                },
+              },
+              { $skip: skip },
+              { $limit: limitNum },
+              {
+                $project: {
+                  _id: 1,
+                  date: 1,
+                  time: 1,
+                  status: 1,
+                  service: 1,
+                  appointmentType: 1,
+                  purpose: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                  patient: {
+                    id: "$patientInfo._id",
+                    fullName: {
+                      $trim: {
+                        input: {
+                          $concat: [
+                            { $ifNull: ["$patientInfo.firstName", ""] },
+                            " ",
+                            { $ifNull: ["$patientInfo.lastName", ""] },
+                          ],
+                        },
+                      },
+                    },
+                    email: "$patientInfo.email",
+                  },
+                  therapist: {
+                    id: "$therapistInfo._id",
+                    fullName: {
+                      $trim: {
+                        input: {
+                          $concat: [
+                            { $ifNull: ["$therapistInfo.firstName", ""] },
+                            " ",
+                            { $ifNull: ["$therapistInfo.lastName", ""] },
+                          ],
+                        },
+                      },
+                    },
+                    email: "$therapistInfo.email",
+                  },
+                },
+              },
+            ],
+            statusBreakdown: [
+              {
+                $group: {
+                  _id: "$status",
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+          },
+        },
+      ]);
+
+      const total = result?.metadata?.[0]?.total || 0;
+      const totalPages = Math.max(1, Math.ceil(total / limitNum));
+      const statusCounts = AdminService.BOOKING_STATUS_OPTIONS.reduce(
+        (accumulator, option) => ({
+          ...accumulator,
+          [option]: 0,
+        }),
+        {}
+      );
+
+      for (const entry of result?.statusBreakdown || []) {
+        statusCounts[entry._id] = entry.count;
+      }
+
+      return {
+        bookings: result?.bookings || [],
+        filters: {
+          search,
+          status,
+          sortOrder,
+        },
+        stats: {
+          total,
+          statusCounts,
+        },
+        pagination: {
+          currentPage: pageNum,
+          totalPages,
+          totalItems: total,
+          itemsPerPage: limitNum,
+        },
+      };
+    } catch (error) {
+      console.log("Error in AdminService.getAdminBookings", error);
+      throw error;
+    }
+  }
+
+  static async getAdminBookingById(adminId, bookingId) {
+    try {
+      const admin = await Admin.findById(adminId);
+      if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
+        throw new Error(
+          "Unauthorized: Only super-admin or admin can access this resource"
+        );
+      }
+
+      const booking = await Appointment.findById(bookingId)
+        .populate("patient", "firstName lastName email phoneNumber")
+        .populate(
+          "therapist",
+          "firstName lastName email phoneNumber specialization"
+        )
+        .lean();
+
+      if (!booking) {
+        const notFoundError = new Error("Booking not found");
+        notFoundError.status = 404;
+        throw notFoundError;
+      }
+
+      if (!booking.statusHistory || booking.statusHistory.length === 0) {
+        booking.statusHistory = [
+          {
+            status: booking.status,
+            fromStatus: "",
+            changedAt: booking.createdAt || new Date(),
+            source: "legacy-record",
+            reason: "Status history unavailable for older record",
+            changedBy: {
+              userId: booking.patient?._id || null,
+              userType: "patient",
+              name:
+                `${booking?.patient?.firstName || ""} ${booking?.patient?.lastName || ""}`.trim() ||
+                booking?.patient?.email ||
+                "Unknown",
+            },
+          },
+        ];
+      }
+
+      return booking;
+    } catch (error) {
+      console.log("Error in AdminService.getAdminBookingById", error);
+      throw error;
+    }
+  }
+
+  static async updateAdminBookingStatus(adminId, bookingId, status, req) {
+    try {
+      const admin = await Admin.findById(adminId);
+      if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
+        throw new Error(
+          "Unauthorized: Only super-admin or admin can access this resource"
+        );
+      }
+
+      const booking = await Appointment.findById(bookingId);
+      if (!booking) {
+        const notFoundError = new Error("Booking not found");
+        notFoundError.status = 404;
+        throw notFoundError;
+      }
+
+      const result = await AppointmentService.updateAppointmentStatus(
+        bookingId,
+        status,
+        req
+      );
+
+      return result;
+    } catch (error) {
+      console.log("Error in AdminService.updateAdminBookingStatus", error);
       throw error;
     }
   }

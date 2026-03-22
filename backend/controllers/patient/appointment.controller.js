@@ -173,6 +173,19 @@ export const createAppointment = asyncHandler(async (req, res) => {
     }
 
     const newAppointment = new Appointment(appointmentData);
+    AppointmentService.appendStatusHistory(newAppointment, {
+      status: newAppointment.status,
+      actor: {
+        userId: patientId,
+        userType: "patient",
+        name:
+          `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+          existingPatient.email ||
+          "Patient",
+      },
+      source: "booking-created",
+      reason: "Appointment created",
+    });
 
     // Save the new appointment to the database
     const savedAppointment = await newAppointment.save();
@@ -221,8 +234,19 @@ export const createAppointment = asyncHandler(async (req, res) => {
           newPayment.status = "success";
           await newPayment.save();
 
-          savedAppointment.status = "Pending";
-          await savedAppointment.save();
+          await AppointmentService.updateStatusWithHistory(savedAppointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                existingPatient.email ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment confirmed in non-production environment",
+          });
 
           paymentResponse = {
             status: "success",
@@ -243,8 +267,19 @@ export const createAppointment = asyncHandler(async (req, res) => {
           await newPayment.save();
         }
         if (savedAppointment.status === "Waiting for Payment") {
-          savedAppointment.status = "Pending";
-          await savedAppointment.save();
+          await AppointmentService.updateStatusWithHistory(savedAppointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                existingPatient.email ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment marked successful without redirect flow",
+          });
         }
       }
     }

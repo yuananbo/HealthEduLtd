@@ -17,6 +17,7 @@ export const adminRoutes = [
   { path: "/admin/", name: "MainDashboard" },
   { path: "/admin/content", name: "Content" },
   { path: "/admin/users", name: "Users" },
+  { path: "/admin/bookings", name: "Bookings" },
   { path: "/admin/therapists", name: "Therapist" },
   // { path: "/therapist/settings", name: "Settings" },
   // { path: "/therapist/profile", name: "Profile" },

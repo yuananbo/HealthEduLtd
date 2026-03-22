@@ -10,6 +10,8 @@ import ContentList from "./pages/content/ContentList";
 import Dashboard from "./pages/dashboard/Dashboard";
 import AllTherapist from "./pages/therapists/AllTherapist";
 import TherapistDetails from "./pages/therapists/TherapistDetails";
+import BookingDetails from "./pages/bookings/BookingDetails";
+import BookingsList from "./pages/bookings/BookingsList";
 import AllUsers from "./pages/users/AllUsers";
 import UserDetails from "./pages/users/UserDetails";
 
@@ -25,6 +27,10 @@ const AdminDashboard = () => {
         <Route path="users">
           <Route index element={<AllUsers />} />
           <Route path=":id" element={<UserDetails />} />
+        </Route>
+        <Route path="bookings">
+          <Route index element={<BookingsList />} />
+          <Route path=":id" element={<BookingDetails />} />
         </Route>
         <Route path="therapists">
           <Route index element={<AllTherapist />} />

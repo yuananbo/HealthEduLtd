@@ -12,6 +12,75 @@ import {
 } from "../utils/emailTemplates.js";
 
 class AppointmentService {
+  static VALID_STATUS_OPTIONS = [
+    "Pending",
+    "Accepted",
+    "Declined",
+    "Completed",
+    "Cancelled",
+    "Rescheduled",
+    "Waiting for Payment",
+  ];
+
+  static buildActorFromRequest(req) {
+    const user = req?.user;
+
+    if (!user) {
+      return {
+        userId: null,
+        userType: "system",
+        name: "System",
+      };
+    }
+
+    return {
+      userId: user._id || null,
+      userType: user.userType || "system",
+      name:
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+        user.email ||
+        user.role ||
+        user.userType ||
+        "System",
+    };
+  }
+
+  static appendStatusHistory(
+    appointment,
+    { status, fromStatus = "", actor, source = "system", reason = "" }
+  ) {
+    appointment.statusHistory = appointment.statusHistory || [];
+    appointment.statusHistory.push({
+      status,
+      fromStatus,
+      changedAt: new Date(),
+      source,
+      reason,
+      changedBy: actor || {
+        userId: null,
+        userType: "system",
+        name: "System",
+      },
+    });
+  }
+
+  static async updateStatusWithHistory(
+    appointment,
+    { status, actor, source = "system", reason = "" }
+  ) {
+    const previousStatus = appointment.status;
+    appointment.status = status;
+    this.appendStatusHistory(appointment, {
+      status,
+      fromStatus: previousStatus,
+      actor,
+      source,
+      reason,
+    });
+    await appointment.save();
+    return appointment;
+  }
+
   // Create a new appointment
   static async createAppointment({
     therapist,
@@ -47,6 +116,16 @@ class AppointmentService {
     }
 
     const newAppointment = new Appointment(appointmentData);
+    this.appendStatusHistory(newAppointment, {
+      status: newAppointment.status,
+      actor: {
+        userId: patientId,
+        userType: "patient",
+        name: "Patient",
+      },
+      source: "booking-created",
+      reason: "Appointment created",
+    });
 
     const savedAppointment = await newAppointment.save();
 
@@ -226,6 +305,10 @@ class AppointmentService {
       throw new Error("Invalid status");
     }
 
+    if (appointment.status === status) {
+      return { appointment };
+    }
+
     if (status === "Completed" && appointment.status !== "Accepted") {
       const transitionError = new Error(
         "Only accepted appointments can be marked as completed"
@@ -234,16 +317,32 @@ class AppointmentService {
       throw transitionError;
     }
 
-    appointment.status = status;
-    await appointment.save();
+    await this.updateStatusWithHistory(appointment, {
+      status,
+      actor: this.buildActorFromRequest(req),
+      source: req?.user?.userType === "admin" ? "admin-action" : "user-action",
+      reason: req?.body?.reason || "",
+    });
+
+    if (status === "Cancelled") {
+      await AvailabilityService.releaseTimeSlot(
+        appointment.therapist,
+        appointment.date,
+        appointment.time
+      );
+    }
 
     // Slot reservation is handled during booking; acceptance shouldn't re-lock slots.
 
-    const baseURL = `${req.protocol}://${req.get("host")}`;
-    const appointmentLinkPatient = `${baseURL}/patient/appointments/${appointment._id}`;
-
     // Only send email for Accepted or Declined statuses
     if (status === "Accepted" || status === "Declined") {
+      const baseURL =
+        req?.protocol && typeof req?.get === "function"
+          ? `${req.protocol}://${req.get("host")}`
+          : "";
+      const appointmentLinkPatient = baseURL
+        ? `${baseURL}/patient/appointments/${appointment._id}`
+        : "";
       const patientDetails = await Patient.findById(appointment.patient);
       const therapistDetails = await Therapist.findById(appointment.therapist);
 
@@ -303,6 +402,17 @@ class AppointmentService {
 
     appointment.date = newDate;
     appointment.time = newTime;
+    this.appendStatusHistory(appointment, {
+      status: "Rescheduled",
+      fromStatus: appointment.status,
+      actor: {
+        userId: appointment.patient,
+        userType: "patient",
+        name: "Patient",
+      },
+      source: "reschedule",
+      reason: "Appointment date or time updated",
+    });
     appointment.status = "Rescheduled";
 
     try {
@@ -403,11 +513,14 @@ class AppointmentService {
       throw new Error("Appointments cannot be cancelled within 48 hours of the appointment date.");
     }
 
-    appointment.status = "Cancelled";
+    await this.updateStatusWithHistory(appointment, {
+      status: "Cancelled",
+      actor: this.buildActorFromRequest(req),
+      source: "cancellation",
+      reason: req?.body?.reason || "Appointment cancelled",
+    });
 
     try {
-      await appointment.save();
-
       // Release the slot back to availability.
       await AvailabilityService.releaseTimeSlot(
         appointment.therapist,
