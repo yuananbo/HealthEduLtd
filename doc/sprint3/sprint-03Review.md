@@ -41,7 +41,8 @@ Sprint 3 built on **develop 2.0** toward **develop 3.0**, focusing on hardening 
 
 #### Goals and/or tasks that were planned but not met/completed:
 
- * **Production-ready payment only**: Full, audited live payment flows in all environments may still require provider setup, HTTPS, and compliance review; mock mode covers development needs first. (Why: security and configuration; prioritized working E2E with mock.)
+ * **Real payment provider API calls**: We **did not integrate live payment API calls** in the current environment. The flow **skips the real provider**; the server-side path effectively **always succeeds** (returns success / `true`) so booking and payment UX can be tested end-to-end. This is **not a product limitation by design**—we could not complete a secure, real integration **given environment constraints** (e.g. no safe credentials / non-production setup). Production-ready Flutterwave (or equivalent) integration remains future work.
+ * **Deployment to a production domain**: The project is **not deployed to a real public domain**; it runs locally (or equivalent) for development and demos. A hosted URL, DNS, and environment-specific configuration are still outstanding.
  * **Email verification**: If still in backlog, remains deferred in favor of appointment completion and ratings. (Why: capacity; same as prior sprint unless reprioritized.)
  * **Further admin user management CRUD**: If not fully finished, table-level manage users may remain partial next to dashboard improvements. (Why: dashboard and appointments took precedence.)
 
