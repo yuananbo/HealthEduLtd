@@ -24,18 +24,6 @@ export default defineConfig({
       ),
     },
   },
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: "./tests/setup.js",
-    include: ["tests/**/*.test.{js,jsx}"],
-    css: true,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "html"],
-      include: ["src/components/admin/pages/content/**/*.jsx"],
-    },
-  },
   server: {
     hmr: {
       protocol: "ws",
