@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useContext, useEffect, useState } from "react";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
   FiCalendar,
   FiClock,
@@ -15,12 +15,40 @@ import Loading from "../../../utilities/Loading";
 import RescheduleAppointment from "./RescheduleAppointment";
 import Input from "../../../common/forms/Input";
 import Button from "../../../common/Button";
+import toast from "react-hot-toast";
+import api from "../../../../utils/api";
+import { UserContext } from "../../../../context/UserContext";
+
+const StarButton = ({ filled, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`text-3xl transition-colors ${
+      filled ? "text-yellow-400" : "text-gray-300 hover:text-yellow-300"
+    }`}
+    aria-label="Select rating star"
+  >
+    ★
+  </button>
+);
+import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
+
+const DEFAULT_CONSULTATION_AMOUNT = 5000;
+const DEFAULT_CURRENCY = "RWF";
 
 const AppointmentDetails = () => {
   const [showNotes, setShowNotes] = useState(false);
+  const [consultationPaying, setConsultationPaying] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [notes, setNotes] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [existingReview, setExistingReview] = useState(null);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { currentUser } = useContext(UserContext);
   const {
     appointment,
     loading: appointmentLoading,
@@ -31,13 +59,65 @@ const AppointmentDetails = () => {
     appointment?.data?.therapist
   );
 
+  useEffect(() => {
+    const fetchExistingReview = async () => {
+      const therapistId = appointment?.data?.therapist;
+      const patientId = currentUser?.data?.user?._id;
+      const isCompleted = appointment?.data?.status === "Completed";
+
+      if (!therapistId || !patientId || !isCompleted) {
+        setExistingReview(null);
+        return;
+      }
+
+      try {
+        setRatingsLoading(true);
+        const response = await api.get(`/rating/${therapistId}`);
+        const ratings = Array.isArray(response?.data?.therapist?.ratings)
+          ? response.data.therapist.ratings
+          : [];
+        const matchedReview = ratings.find(
+          (item) => String(item?.patient?._id) === String(patientId)
+        );
+
+        setExistingReview(matchedReview || null);
+        if (matchedReview) {
+          setReviewRating(Number(matchedReview.rating) || 0);
+          setReviewText(matchedReview.review || "");
+        }
+      } catch (fetchError) {
+        console.error("Error fetching therapist ratings:", fetchError);
+      } finally {
+        setRatingsLoading(false);
+      }
+    };
+
+    fetchExistingReview();
+  }, [appointment?.data?.status, appointment?.data?.therapist, currentUser?.data?.user?._id]);
+
   if (appointmentLoading || loading) {
     return <Loading />;
   }
 
-  const handleCancel = () => {
-    // Implement cancel logic
-    console.log("Appointment cancelled");
+  const handleCancel = async () => {
+    try {
+      if (!id) return;
+      const confirm = window.confirm(
+        "Cancel this appointment? This action cannot be undone."
+      );
+      if (!confirm) return;
+
+      await api.patch(`/patient/appointments/${id}/cancel`);
+      toast.success("Appointment cancelled");
+      navigate("/patient/appointments");
+    } catch (e) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Failed to cancel appointment";
+      toast.error(message);
+    }
   };
 
   const handleReschedule = () => {
@@ -54,6 +134,68 @@ const AppointmentDetails = () => {
   const handleStartChat = () => {
     // Implement chat logic
     console.log("Starting chat with therapist");
+  };
+
+  const handleSubmitReview = async () => {
+    if (!appointment?.data?.therapist) return;
+    if (reviewRating < 1 || reviewRating > 5) {
+      toast.error("Please select a rating before submitting");
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      const response = await api.post(`/rating/${appointment.data.therapist}`, {
+        rating: reviewRating,
+        review: reviewText.trim(),
+      });
+
+      setExistingReview(response?.data?.rating || {
+        rating: reviewRating,
+        review: reviewText.trim(),
+        createdAt: new Date().toISOString(),
+      });
+      toast.success("Thank you for your feedback");
+    } catch (submitError) {
+      const message =
+        submitError?.response?.data?.message ||
+        submitError?.message ||
+        "Failed to submit your review";
+      toast.error(message);
+    } finally {
+      setSubmittingReview(false);
+  }
+};
+      
+  const handlePayConsultationFee = async () => {
+    if (!id) return;
+    try {
+      setConsultationPaying(true);
+      const response = await api.post(
+        `/patient/appointments/${id}/pay-consultation`,
+        {
+          amount: DEFAULT_CONSULTATION_AMOUNT,
+          currency: DEFAULT_CURRENCY,
+        }
+      );
+      const pr = response.data?.paymentResponse;
+      const redirect = getPaymentRedirectUrl(pr);
+      if (redirect) {
+        window.location.href = redirect;
+      } else {
+        toast.success("Consultation fee paid successfully.");
+        navigate("/patient/payment-success-page");
+      }
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Could not process payment";
+      toast.error(msg);
+    } finally {
+      setConsultationPaying(false);
+    }
   };
 
   return (
@@ -100,6 +242,12 @@ const AppointmentDetails = () => {
                     ? "bg-green-100 text-green-800"
                     : appointment?.data?.status === "Pending"
                     ? "bg-yellow-100 text-yellow-800"
+                    : appointment?.data?.status === "Completed"
+                    ? "bg-blue-100 text-blue-800"
+                    : appointment?.data?.status === "Waiting for Payment"
+                    ? "bg-orange-100 text-orange-800"
+                    : appointment?.data?.status === "Rescheduled"
+                    ? "bg-purple-100 text-purple-800"
                     : "bg-red-100 text-red-800"
                 }`}
               >
@@ -158,7 +306,9 @@ const AppointmentDetails = () => {
                     <FiMapPin className="text-greenPrimary mr-2" />
                     {appointment?.data?.appointmentType === "home-care"
                       ? "Home Care Visit"
-                      : "In-Person"}
+                      : appointment?.data?.appointmentType === "online"
+                        ? "Online Meeting"
+                        : "In-Person"}
                   </p>
                 </div>
               )}
@@ -194,13 +344,43 @@ const AppointmentDetails = () => {
                   appointment.
                 </p>
                 <Link
-                  to="/patient/therapist-list"
+                  to="/patient/home-care"
                   className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
                 >
                   Book Appointment
                 </Link>
               </div>
-            ) : (
+            ) : appointment?.data?.status === "Completed" ? (
+              <div className="w-full p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-800">
+                      Appointment Completed
+                    </h3>
+                    {appointment?.data?.consultationFeePaid ? (
+                      <p className="text-sm text-green-600 mt-1">
+                        Consultation fee has been paid. Thank you.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-600 mt-1">
+                        Please pay the consultation fee for this visit (booking
+                        fee was paid when you scheduled).
+                      </p>
+                    )}
+                  </div>
+                  {!appointment?.data?.consultationFeePaid && (
+                    <button
+                      type="button"
+                      onClick={handlePayConsultationFee}
+                      disabled={consultationPaying}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap"
+                    >
+                      {consultationPaying ? "Processing…" : "Pay Consultation Fee"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : appointment?.data?.status === "Cancelled" ? null : (
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={() => setIsRescheduleModalOpen(true)}
@@ -225,6 +405,28 @@ const AppointmentDetails = () => {
               </div>
             )}
           </div>
+
+          {appointment?.data?.status === "Waiting for Payment" && (
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-800">
+                    Awaiting payment
+                  </h3>
+                  <p className="text-sm text-orange-600 mt-1">
+                    Complete checkout to confirm this appointment. You will be
+                    redirected to our payment provider when available.
+                  </p>
+                </div>
+                <NavLink
+                  to={`/patient/appointments/${id}/pay`}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded transition duration-150 ease-in-out whitespace-nowrap text-center"
+                >
+                  Go to payment
+                </NavLink>
+              </div>
+            </div>
+          )}
 
           {appointment?.data?.status === "Accepted" && (
             <div className="space-y-6">
@@ -280,6 +482,79 @@ const AppointmentDetails = () => {
                   <FiMessageCircle className="mr-2" /> Start Chat
                 </button>
               </div>
+            </div>
+          )}
+
+          {appointment?.data?.status === "Completed" && (
+            <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-5">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Rate Your Therapist
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Share a star rating and an optional review for this completed appointment.
+              </p>
+
+              {ratingsLoading ? (
+                <p className="text-sm text-gray-500">Loading your review...</p>
+              ) : existingReview ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`text-3xl ${
+                          star <= Number(existingReview?.rating || 0)
+                            ? "text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    {(existingReview?.review || "").trim()
+                      ? existingReview.review
+                      : "You submitted a rating without a written review."}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Submitted: {new Date(existingReview?.createdAt || Date.now()).toLocaleDateString()}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <StarButton
+                        key={star}
+                        filled={star <= reviewRating}
+                        onClick={() => setReviewRating(star)}
+                      />
+                    ))}
+                  </div>
+
+                  <Input
+                    value={reviewText}
+                    handleChange={(e) => setReviewText(e.target.value)}
+                    labelText="Review (optional)"
+                    labelFor="review"
+                    id="review"
+                    name="review"
+                    type="textarea"
+                    component="textarea"
+                    placeholder="How was your experience with this therapist?"
+                  />
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSubmitReview}
+                      label={submittingReview ? "Submitting..." : "Submit Review"}
+                      variant="filled"
+                      disabled={submittingReview}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

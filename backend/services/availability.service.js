@@ -1,3 +1,20 @@
+/**
+ * Design Pattern: Service Layer / Facade
+ *
+ * Why used in this module:
+ * - Availability and time-slot rules (create, query, reserve, release, normalize) are shared by
+ *   multiple HTTP controllers and should live in one domain-focused place.
+ *
+ * What problem it solves:
+ * - Prevents duplicated/contradictory logic across controllers (date-only handling, slot toggling,
+ *   conflict checks).
+ * - Reduces coupling between the HTTP layer and MongoDB/Mongoose persistence details.
+ *
+ * How it improves extensibility/maintainability:
+ * - New scheduling rules (buffers, max bookings/day, expiry, provider policies) can be added here
+ *   without modifying many controllers.
+ * - Makes booking/cancellation behavior easier to test and reason about.
+ */
 import moment from "moment";
 import Availability from "../models/availability.model.js";
 
@@ -14,7 +31,7 @@ class AvailabilityService {
     const availability = new Availability({
       therapist: therapistId,
       availabilities: dates.map((date) => ({
-        date: moment(date.date).startOf("day").toDate(),
+        date: moment.utc(date.date).startOf("day").toDate(),
         times: date.times.map((time) => ({ time, isActive: true })),
       })),
       availabilityName: availabilityName,
@@ -95,7 +112,7 @@ class AvailabilityService {
 
   // Update availability time slot status to false (not available) after booking an appointment
   static async updateAvailability(therapistId, date, time) {
-    const searchDate = moment(date).startOf("day").toDate();
+    const searchDate = moment.utc(date).startOf("day").toDate();
 
     const availability = await Availability.findOne({
       therapist: therapistId,
@@ -141,6 +158,124 @@ class AvailabilityService {
     return { updated: false };
   }
 
+  static normalizeTime(time) {
+    if (!time) return "";
+    const t = String(time).trim();
+    // Normalize "9:00" -> "09:00" for consistency with stored slots.
+    if (/^\d:\d{2}$/.test(t)) return `0${t}`;
+    return t;
+  }
+
+  /**
+   * Reserve a specific time slot (set isActive=false) for a therapist on a date.
+   * Returns { updated: boolean, allSlotsBooked?: boolean, reason?: string }
+   */
+  static async reserveTimeSlot(therapistId, date, time) {
+    const normalizedTime = this.normalizeTime(time);
+    const start = moment.utc(date).startOf("day").toDate();
+    const end = moment.utc(date).endOf("day").toDate();
+
+    // Atomic reserve: only one request can flip isActive=true -> false.
+    const result = await Availability.updateOne(
+      {
+        therapist: therapistId,
+        isActive: true,
+        availabilities: {
+          $elemMatch: {
+            date: { $gte: start, $lt: end },
+            times: { $elemMatch: { time: normalizedTime, isActive: true } },
+          },
+        },
+      },
+      { $set: { "availabilities.$[d].times.$[t].isActive": false } },
+      {
+        arrayFilters: [
+          { "d.date": { $gte: start, $lt: end } },
+          { "t.time": normalizedTime, "t.isActive": true },
+        ],
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      // Determine a best-effort reason for UI.
+      const hasDate = await Availability.exists({
+        therapist: therapistId,
+        isActive: true,
+        "availabilities.date": { $gte: start, $lt: end },
+      });
+      if (!hasDate) return { updated: false, reason: "date_not_found" };
+
+      const hasTime = await Availability.exists({
+        therapist: therapistId,
+        isActive: true,
+        availabilities: {
+          $elemMatch: {
+            date: { $gte: start, $lt: end },
+            "times.time": normalizedTime,
+          },
+        },
+      });
+      if (!hasTime) return { updated: false, reason: "time_not_found" };
+
+      return { updated: false, reason: "slot_already_reserved" };
+    }
+
+    // Compute whether the date is now fully booked (best-effort).
+    const availability = await Availability.findOne({
+      therapist: therapistId,
+      isActive: true,
+      "availabilities.date": { $gte: start, $lt: end },
+    });
+    const day = availability?.availabilities?.find((a) =>
+      moment.utc(a.date).isSame(moment.utc(start), "day")
+    );
+    const allSlotsBooked =
+      (day?.times || []).length > 0 &&
+      (day?.times || []).every((t) => t.isActive === false);
+
+    return { updated: true, allSlotsBooked };
+  }
+
+  /**
+   * Release a reserved time slot (set isActive=true).
+   * Returns { updated: boolean, reason?: string }
+   */
+  static async releaseTimeSlot(therapistId, date, time) {
+    const normalizedTime = this.normalizeTime(time);
+    const start = moment.utc(date).startOf("day").toDate();
+    const end = moment.utc(date).endOf("day").toDate();
+
+    const result = await Availability.updateOne(
+      {
+        therapist: therapistId,
+        availabilities: {
+          $elemMatch: {
+            date: { $gte: start, $lt: end },
+            times: { $elemMatch: { time: normalizedTime, isActive: false } },
+          },
+        },
+      },
+      {
+        $set: {
+          isActive: true,
+          "availabilities.$[d].times.$[t].isActive": true,
+        },
+      },
+      {
+        arrayFilters: [
+          { "d.date": { $gte: start, $lt: end } },
+          { "t.time": normalizedTime, "t.isActive": false },
+        ],
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      return { updated: false, reason: "slot_not_reserved" };
+    }
+
+    return { updated: true };
+  }
+
   // Therapist can update their availability by adding new time slots, or removing existing ones or changing the availability name, or changing the date
   static async updateMyAvailability(req, id, dates, availabilityName) {
     try {
@@ -161,7 +296,7 @@ class AvailabilityService {
 
       if (dates) {
         availability.availabilities = dates.map((date) => ({
-          date: moment(date.date).startOf("day").toDate(),
+          date: moment.utc(date.date).startOf("day").toDate(),
           times: date.times.map((time) => ({
             time: time.time,
             isActive: time.isActive,
@@ -194,9 +329,9 @@ class AvailabilityService {
       throw new Error("Availability not found or not authorized");
     }
 
-    const targetDate = moment(date).startOf("day");
+    const targetDate = moment.utc(date).startOf("day");
     const dateEntry = availability.availabilities.find((item) =>
-      moment(item.date).isSame(targetDate, "day")
+      moment.utc(item.date).isSame(targetDate, "day")
     );
 
     if (!dateEntry) {

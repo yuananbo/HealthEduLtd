@@ -14,6 +14,8 @@ const fields = loginFields;
 let fieldsState = {};
 fields.forEach((field) => (fieldsState[field.id] = ""));
 
+const LOCKOUT_MESSAGE = "连续五次不成功就锁30分钟";
+
 export default function AdminLogin() {
   const [loginState, setLoginState] = useState(fieldsState);
   const [loading, setLoading] = useState(false);
@@ -58,9 +60,15 @@ export default function AdminLogin() {
       toast.success("Logged in successfully");
       navigate("/admin/", { replace: true });
     } catch (error) {
+      const errorMessage = error.response?.data?.message || "";
+      const shouldShowLockoutMessage =
+        errorMessage.includes("Too many failed attempts") ||
+        errorMessage.includes("Account is locked");
+
       toast.error(
-        error.response?.data?.message ||
-          "An error occurred. Please try again later."
+        shouldShowLockoutMessage
+          ? LOCKOUT_MESSAGE
+          : errorMessage || "An error occurred. Please try again later."
       );
     } finally {
       setLoading(false);

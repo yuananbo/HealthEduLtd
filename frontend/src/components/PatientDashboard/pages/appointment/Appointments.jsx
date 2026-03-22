@@ -4,14 +4,37 @@ import AppointmentItem from "./AppointmentItem";
 import { Link } from "react-router-dom";
 import { FiSearch, FiFilter, FiCalendar, FiPlus } from "react-icons/fi";
 import Loading from "../../../utilities/Loading";
+import toast from "react-hot-toast";
+import api from "../../../../utils/api";
+
+/**
+ * Match an ISO date (e.g. createdAt) to an <input type="date"> value (YYYY-MM-DD)
+ * using the user's local calendar. Avoids `new Date("YYYY-MM-DD")` UTC parsing,
+ * which shifts the calendar day in many timezones.
+ */
+export function matchesLocalCalendarDay(isoString, dateInputValue) {
+  if (!dateInputValue || !isoString) return true;
+  const parts = dateInputValue.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return true;
+  const [y, m, d] = parts;
+  const t = new Date(isoString);
+  return (
+    t.getFullYear() === y &&
+    t.getMonth() + 1 === m &&
+    t.getDate() === d
+  );
+}
 
 const Appointments = () => {
-  const [loading, error, data] = useDataFetching("/patient/appointments");
+  const [loading, error, data, refetch] = useDataFetching(
+    "/patient/appointments?limit=50"
+  );
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedAppointments, setSelectedAppointments] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // console.log("filterexd", filteredData);
 
@@ -21,11 +44,21 @@ const Appointments = () => {
 
       if (searchTerm) {
         filtered = filtered.filter(
-          (appointment) =>
-            appointment.therapist
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            appointment.status.toLowerCase().includes(searchTerm.toLowerCase())
+          (appointment) => {
+            const therapistName =
+              typeof appointment?.therapist === "object" && appointment?.therapist
+                ? `${appointment.therapist.firstName || ""} ${
+                    appointment.therapist.lastName || ""
+                  } ${appointment.therapist.specialization || ""}`
+                : String(appointment?.therapist || "");
+
+            return (
+              therapistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              String(appointment?.status || "")
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase())
+            );
+          }
         );
       }
 
@@ -36,10 +69,8 @@ const Appointments = () => {
       }
 
       if (dateFilter) {
-        filtered = filtered.filter(
-          (appointment) =>
-            new Date(appointment.createdAt).toDateString() ===
-            new Date(dateFilter).toDateString()
+        filtered = filtered.filter((appointment) =>
+          matchesLocalCalendarDay(appointment.createdAt, dateFilter)
         );
       }
 
@@ -62,8 +93,57 @@ const Appointments = () => {
   };
 
   const handleBulkAction = (action) => {
-    // Implement bulk action logic here
-    console.log(`Performing ${action} on`, selectedAppointments);
+    if (action === "cancel") {
+      bulkCancelSelected();
+      return;
+    }
+    toast("Bulk action not implemented yet");
+  };
+
+  const bulkCancelSelected = async () => {
+    if (selectedAppointments.length === 0) return;
+    const confirm = window.confirm(
+      `Cancel ${selectedAppointments.length} selected appointment(s)?`
+    );
+    if (!confirm) return;
+
+    try {
+      setBulkLoading(true);
+      const results = await Promise.allSettled(
+        selectedAppointments.map((id) =>
+          api.patch(`/patient/appointments/${id}/cancel`)
+        )
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled")
+        .length;
+      const failed = results
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.reason);
+
+      if (successCount > 0) {
+        toast.success(`Cancelled ${successCount} appointment(s)`);
+      }
+      if (failed.length > 0) {
+        const firstMessage =
+          failed[0]?.response?.data?.message ||
+          failed[0]?.response?.data?.error ||
+          failed[0]?.message ||
+          "Some appointments could not be cancelled";
+        toast.error(
+          `Failed to cancel ${failed.length} appointment(s). ${firstMessage}`
+        );
+      }
+
+      setSelectedAppointments([]);
+      refetch();
+    } catch (e) {
+      toast.error(
+        e?.response?.data?.message || e?.message || "Bulk cancel failed"
+      );
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   if (loading) {
@@ -79,32 +159,6 @@ const Appointments = () => {
     );
   }
 
-  // Check if there are no appointments
-  if (!filteredData || filteredData.length === 0) {
-    return (
-      <div className="p-4 md:p-6 bg-white">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Appointments</h1>
-        </div>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-            No appointments yet
-          </h2>
-          <p className="text-gray-500 mb-8">
-            Book your first appointment to get started
-          </p>
-          <Link
-            to="/patient/therapist-list"
-            className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-3 px-6 rounded inline-flex items-center transition duration-150 ease-in-out"
-          >
-            <FiPlus className="mr-2" />
-            Book Appointment
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-6 bg-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -112,7 +166,7 @@ const Appointments = () => {
           Appointments
         </h1>
         <Link
-          to="/patient/therapist-list"
+          to="/patient/home-care"
           className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-2 px-4 rounded inline-flex items-center transition duration-150 ease-in-out"
         >
           <FiPlus className="mr-2" />
@@ -142,8 +196,12 @@ const Appointments = () => {
             >
               <option value="All">All Statuses</option>
               <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Declined">Declined</option>
+              <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
+              <option value="Rescheduled">Rescheduled</option>
+              <option value="Waiting for Payment">Waiting for Payment</option>
             </select>
             <FiFilter className="absolute left-3 top-3 text-gray-400" />
           </div>
@@ -167,9 +225,10 @@ const Appointments = () => {
           <div className="flex gap-2">
             <button
               onClick={() => handleBulkAction("cancel")}
+              disabled={bulkLoading}
               className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
             >
-              Cancel Selected
+              {bulkLoading ? "Cancelling..." : "Cancel Selected"}
             </button>
             <button
               onClick={() => handleBulkAction("reschedule")}
@@ -181,50 +240,70 @@ const Appointments = () => {
         </div>
       )}
 
-      <div className="overflow-x-auto shadow-md sm:rounded-lg">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-            <tr>
-              <th scope="col" className="p-4">
-                <input
-                  type="checkbox"
-                  checked={selectedAppointments.length === filteredData.length}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 text-greenPrimary bg-gray-100 border-gray-300 rounded focus:ring-hoverColor"
+      {filteredData.length === 0 ? (
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+            No appointments found
+          </h2>
+          <p className="text-gray-500 mb-8">
+            {data?.data?.length === 0
+              ? "Book your first appointment to get started"
+              : "Try adjusting your search or filters"}
+          </p>
+          <Link
+            to="/patient/home-care"
+            className="bg-greenPrimary hover:bg-hoverColor text-white font-bold py-3 px-6 rounded inline-flex items-center transition duration-150 ease-in-out"
+          >
+            <FiPlus className="mr-2" />
+            Book Appointment
+          </Link>
+        </div>
+      ) : (
+        <div className="overflow-x-auto shadow-md sm:rounded-lg">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" className="p-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedAppointments.length === filteredData.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-greenPrimary bg-gray-100 border-gray-300 rounded focus:ring-hoverColor"
+                  />
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Therapist
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Appointment Date
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Appointment Time
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Created At
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((appointment) => (
+                <AppointmentItem
+                  key={appointment._id}
+                  appointment={appointment}
+                  isSelected={selectedAppointments.includes(appointment._id)}
+                  onSelect={() => handleSelect(appointment._id)}
                 />
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Therapist
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Appointment Date
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Appointment Time
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Created At
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((appointment) => (
-              <AppointmentItem
-                key={appointment._id}
-                appointment={appointment}
-                isSelected={selectedAppointments.includes(appointment._id)}
-                onSelect={() => handleSelect(appointment._id)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

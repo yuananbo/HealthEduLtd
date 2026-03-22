@@ -1,6 +1,32 @@
+/**
+ * Design Pattern: Strategy (runtime policy selection)
+ *
+ * Why used in this module:
+ * - Payment behavior differs by environment:
+ *   - Production: real payment provider integration (Flutterwave)
+ *   - Development/Demo: skip external provider to keep core booking flows stable
+ *
+ * What problem it solves:
+ * - Prevents missing credentials/provider downtime from breaking appointment booking during dev/demo.
+ *
+ * How it improves extensibility/maintainability:
+ * - New providers (or a stubbed/no-op provider) can be introduced as alternative strategies without
+ *   rewriting appointment creation logic.
+ */
 import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
+import { getPublicBackendBaseUrl } from "./paymentEnv.js";
 dotenv.config();
+
+/**
+ * Local/demo: skip Flutterwave and mark payment as OK (see processPayment).
+ * Set USE_REAL_PAYMENT=true in .env to call Flutterwave while NODE_ENV is development
+ * (you must configure FLW_PUBLIC_KEY and FLW_SECRET_KEY).
+ */
+export function isMockPayment() {
+  if (process.env.USE_REAL_PAYMENT === "true") return false;
+  return process.env.NODE_ENV !== "production";
+}
 
 // Initialize Flutterwave with fallback for missing keys
 let flw = null;
@@ -24,11 +50,17 @@ async function processPayment({
   email,
   req,
 }) {
-  const protocol = req.protocol;
-  const host = req.get("host");
+  if (isMockPayment()) {
+    return {
+      status: "success",
+      message: "Payment disabled in non-production environment",
+      meta: { authorization: {} },
+    };
+  }
 
   const txRef = `appointment-${appointmentId}-${Date.now()}`;
-  const redirect_url = `${protocol}://${host}/api/v1/payment-success`;
+  const backendBase = getPublicBackendBaseUrl(req);
+  const redirect_url = `${backendBase}/api/v1/payment-success`;
 
   console.log("Redirect URL:", redirect_url);
 

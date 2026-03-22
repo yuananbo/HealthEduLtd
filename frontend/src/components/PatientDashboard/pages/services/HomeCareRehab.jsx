@@ -6,9 +6,32 @@ import useDataFetching from "../../../../hooks/useFech";
 import Loading from "../../../utilities/Loading";
 import { FaHome } from "react-icons/fa";
 
+const HOME_CARE_SERVICES = [
+  { id: "all", label: "All" },
+  { id: "physical-therapy", label: "Physical Therapy" },
+  { id: "occupational-therapy", label: "Occupational Therapy" },
+  { id: "prosthetics-orthotics", label: "Prosthetics and Orthotics" },
+  {
+    id: "family-medicine-chronic-care",
+    label: "Family Medicine & Chronic Care",
+  },
+  { id: "mental-health", label: "Mental Health" },
+  { id: "nutrition", label: "Nutrition" },
+];
+
+const SERVICE_TO_SPECIALIZATIONS = {
+  "physical-therapy": ["Physiotherapist"],
+  "occupational-therapy": ["Occupational Therapist"],
+  "prosthetics-orthotics": ["Prosthetist and Orthotist"],
+  "family-medicine-chronic-care": ["Medical Doctor", "Nurse"],
+  "mental-health": ["Counsellor"],
+  nutrition: ["Nutritionist"],
+};
+
 const HomeCareRehab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
+  const [selectedService, setSelectedService] = useState("all");
   const [filteredTherapists, setFilteredTherapists] = useState([]);
   const [allTherapists, setAllTherapists] = useState([]);
   const [loading, error, data] = useDataFetching("/patient/therapists");
@@ -32,16 +55,23 @@ const HomeCareRehab = () => {
 
   useEffect(() => {
     if (allTherapists.length > 0) {
+      const allowedSpecializations =
+        selectedService === "all"
+          ? null
+          : SERVICE_TO_SPECIALIZATIONS[selectedService] || [];
+
       const filtered = allTherapists.filter(
         (therapist) =>
           therapist.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!allowedSpecializations ||
+            therapist.specialties.some((s) => allowedSpecializations.includes(s))) &&
           (selectedSpecialty === "" ||
             selectedSpecialty === "All" ||
             therapist.specialties.includes(selectedSpecialty))
       );
       setFilteredTherapists(filtered);
     }
-  }, [searchTerm, selectedSpecialty, allTherapists]);
+  }, [searchTerm, selectedService, selectedSpecialty, allTherapists]);
 
   const specialties = [
     "All",
@@ -49,6 +79,10 @@ const HomeCareRehab = () => {
   ];
 
   const handleBookHomeCare = (therapist) => {
+    const selectedServiceLabel =
+      HOME_CARE_SERVICES.find((s) => s.id === selectedService)?.label ||
+      "Assisted Home Care";
+
     navigate("/patient/home-care/book", {
       state: {
         therapist: {
@@ -60,6 +94,7 @@ const HomeCareRehab = () => {
           country: therapist.country,
           bio: therapist.bio,
         },
+        selectedHomeCareService: selectedServiceLabel,
       },
     });
   };
@@ -77,11 +112,11 @@ const HomeCareRehab = () => {
             <FaHome className="text-3xl" />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-3">
-            Home Care Rehab
+            Assisted Home Care
           </h1>
           <p className="text-gray-600 max-w-xl mx-auto">
-            Book a qualified therapist to visit your home for rehabilitation
-            services. Select a therapist below to schedule a home visit.
+            Book professional care either at home or as an online meeting. Choose a
+            service category, then select a specialist to schedule your session.
           </p>
         </div>
 
@@ -110,6 +145,20 @@ const HomeCareRehab = () => {
                 />
               </svg>
             </div>
+            <select
+              value={selectedService}
+              onChange={(e) => {
+                setSelectedService(e.target.value);
+                setSelectedSpecialty("All");
+              }}
+              className="p-4 rounded-full border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none appearance-none bg-white"
+            >
+              {HOME_CARE_SERVICES.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.label}
+                </option>
+              ))}
+            </select>
             <select
               value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
@@ -147,7 +196,7 @@ const HomeCareRehab = () => {
                     <TherapistCard
                       therapist={therapist}
                       onBookAppointment={() => handleBookHomeCare(therapist)}
-                      bookAppointmentLabel="Book Home Visit"
+                      bookAppointmentLabel="Book Appointment"
                     />
                   </motion.div>
                 ))}

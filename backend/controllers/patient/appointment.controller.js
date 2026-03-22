@@ -4,11 +4,12 @@ import Patient from "../../models/patient.model.js";
 import Payment from "../../models/payment.model.js";
 import Therapist from "../../models/therapist.model.js";
 import AppointmentService from "../../services/appointment.service.js";
+import AvailabilityService from "../../services/availability.service.js";
 import {
   appointmentConfirmationTemplate,
   appointmentConfrimationTherapistTemplate,
 } from "../../utils/emailTemplates.js";
-import processPayment from "../../utils/payment.js";
+import processPayment, { isMockPayment } from "../../utils/payment.js";
 import { sendEmail } from "../../utils/sendGridEmail.js";
 
 // import paymentGateway from "../utils/paymentGateway.js";
@@ -141,11 +142,6 @@ export const createAppointment = asyncHandler(async (req, res) => {
       return res.status(404).json({ error: "Patient not found" });
     }
 
-    // Check if the payment details are provided
-    if (!paymentDetails) {
-      return res.status(400).json({ error: "Payment details are required" });
-    }
-
     // For home-care appointments, validate that home address is provided
     if (appointmentType === "home-care") {
       const addr = homeAddress || {};
@@ -172,40 +168,128 @@ export const createAppointment = asyncHandler(async (req, res) => {
       appointmentData.homeAddress = homeAddress;
     }
 
+    if (!paymentDetails) {
+      appointmentData.status = "Waiting for Payment";
+    }
+
     const newAppointment = new Appointment(appointmentData);
+    AppointmentService.appendStatusHistory(newAppointment, {
+      status: newAppointment.status,
+      actor: {
+        userId: patientId,
+        userType: "patient",
+        name:
+          `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+          existingPatient.email ||
+          "Patient",
+      },
+      source: "booking-created",
+      reason: "Appointment created",
+    });
 
     // Save the new appointment to the database
     const savedAppointment = await newAppointment.save();
 
-    // Create a new payment
-    const newPayment = new Payment({
-      amount: paymentDetails.amount,
-      currency: paymentDetails.currency,
-      status: "pending",
-      appointment: savedAppointment._id,
-    });
+    // Reserve the slot immediately so it can't be double-booked.
+    const reserveResult = await AvailabilityService.reserveTimeSlot(
+      therapist,
+      savedAppointment.date,
+      savedAppointment.time
+    );
+    if (!reserveResult.updated) {
+      await Appointment.deleteOne({ _id: savedAppointment._id });
+      return res.status(409).json({
+        error:
+          reserveResult.reason === "slot_already_reserved"
+            ? "This time slot has just been booked. Please choose another."
+            : "Selected time slot is not available. Please choose another.",
+      });
+    }
 
-    // Save the payment to the database
-    await newPayment.save();
+    let paymentResponse = null;
 
-    const paymentResponse = await processPayment({
-      phoneNumber: existingPatient.phoneNumber,
-      fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-      amount: paymentDetails.amount,
-      currency: paymentDetails.currency,
-      appointmentId: savedAppointment._id,
-      email: existingPatient.email,
-      req: req,
-    });
+    if (paymentDetails) {
+      const newPayment = new Payment({
+        amount: paymentDetails.amount,
+        currency: paymentDetails.currency,
+        status: "pending",
+        appointment: savedAppointment._id,
+        purpose: "registration",
+      });
 
-    //     // Fetch patient and therapist details
+      await newPayment.save();
+
+      try {
+        paymentResponse = await processPayment({
+          phoneNumber: existingPatient.phoneNumber,
+          fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+          amount: paymentDetails.amount,
+          currency: paymentDetails.currency,
+          appointmentId: savedAppointment._id,
+          email: existingPatient.email,
+          req: req,
+        });
+      } catch (paymentError) {
+        if (isMockPayment()) {
+          newPayment.status = "success";
+          await newPayment.save();
+
+          await AppointmentService.updateStatusWithHistory(savedAppointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                existingPatient.email ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment confirmed in non-production environment",
+          });
+
+          paymentResponse = {
+            status: "success",
+            message: "Payment skipped in non-production environment",
+            meta: { authorization: {} },
+          };
+        } else {
+          throw paymentError;
+        }
+      }
+
+      const redirectUrl =
+        paymentResponse?.meta?.authorization?.redirect ||
+        paymentResponse?.data?.meta?.authorization?.redirect;
+      if (!redirectUrl) {
+        if (newPayment.status !== "success") {
+          newPayment.status = "success";
+          await newPayment.save();
+        }
+        if (savedAppointment.status === "Waiting for Payment") {
+          await AppointmentService.updateStatusWithHistory(savedAppointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                existingPatient.email ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment marked successful without redirect flow",
+          });
+        }
+      }
+    }
+
     const patientDetails = await Patient.findById(patientId);
     const therapistDetails = await Therapist.findById(therapist);
 
     const baseURL = `${req.protocol}://${req.get("host")}`;
     const appointmentLinkPatient = `${baseURL}/patient/appointments/${savedAppointment._id}`;
 
-    // For patient
     const patientEmailData = {
       recipientEmail: patientDetails.email,
       subject: "Appointment Booking Details",
@@ -224,7 +308,6 @@ export const createAppointment = asyncHandler(async (req, res) => {
     };
 
     const appointmentLinkTherapist = `${baseURL}/therapist/appointments/${savedAppointment._id}`;
-    // For therapist
     const therapistEmailData = {
       recipientEmail: therapistDetails.email,
       subject: "New Appointment Notification",
@@ -258,9 +341,211 @@ export const createAppointment = asyncHandler(async (req, res) => {
   }
 });
 
-// red
+/** Start checkout for an existing appointment that was reserved without payment (e.g. "cart"). */
+export const initiateAppointmentPayment = asyncHandler(async (req, res) => {
+  try {
+    const appointmentId = req.params._id;
+    const patientId = req.user._id;
+    const { amount = 5000, currency = "RWF" } = req.body || {};
 
-// Get all appointments
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    if (appointment.patient.toString() !== patientId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to pay for this appointment" });
+    }
+    if (appointment.status !== "Waiting for Payment") {
+      return res.status(400).json({
+        error: "Payment is only available for appointments awaiting payment",
+      });
+    }
+
+    let paymentDoc = await Payment.findOne({
+      appointment: appointmentId,
+      $or: [{ purpose: { $exists: false } }, { purpose: "registration" }],
+    });
+    if (paymentDoc?.status === "success") {
+      return res.status(400).json({ error: "This appointment is already paid" });
+    }
+
+    if (!paymentDoc) {
+      paymentDoc = new Payment({
+        amount,
+        currency,
+        status: "pending",
+        appointment: appointment._id,
+        purpose: "registration",
+      });
+      await paymentDoc.save();
+    } else {
+      paymentDoc.amount = amount;
+      paymentDoc.currency = currency;
+      if (paymentDoc.status === "failed") {
+        paymentDoc.status = "pending";
+      }
+      await paymentDoc.save();
+    }
+
+    const existingPatient = await Patient.findById(patientId);
+
+    let paymentResponse = null;
+    try {
+      paymentResponse = await processPayment({
+        phoneNumber: existingPatient.phoneNumber,
+        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+        amount: paymentDoc.amount,
+        currency: paymentDoc.currency,
+        appointmentId: appointment._id,
+        email: existingPatient.email,
+        req,
+      });
+    } catch (paymentError) {
+      if (isMockPayment()) {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+
+        appointment.status = "Pending";
+        await appointment.save();
+
+        paymentResponse = {
+          status: "success",
+          message: "Payment skipped in non-production environment",
+          meta: { authorization: {} },
+        };
+      } else {
+        throw paymentError;
+      }
+    }
+
+    const redirectUrl =
+      paymentResponse?.meta?.authorization?.redirect ||
+      paymentResponse?.data?.meta?.authorization?.redirect;
+    if (!redirectUrl) {
+      if (paymentDoc.status !== "success") {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+      }
+      if (appointment.status === "Waiting for Payment") {
+        appointment.status = "Pending";
+        await appointment.save();
+      }
+    }
+
+    const refreshed = await Appointment.findById(appointmentId);
+
+    res.status(200).json({
+      success: true,
+      appointment: refreshed,
+      paymentResponse,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/** Pay consultation fee after visit (uses same processPayment / mock as registration). */
+export const initiateConsultationPayment = asyncHandler(async (req, res) => {
+  try {
+    const appointmentId = req.params._id;
+    const patientId = req.user._id;
+    const { amount = 5000, currency = "RWF" } = req.body || {};
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    if (appointment.patient.toString() !== patientId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to pay for this appointment" });
+    }
+    if (appointment.status !== "Completed") {
+      return res.status(400).json({
+        error:
+          "Consultation fee payment is only available for completed appointments",
+      });
+    }
+
+    let paymentDoc = await Payment.findOne({
+      appointment: appointmentId,
+      purpose: "consultation",
+    });
+    if (paymentDoc?.status === "success") {
+      return res
+        .status(400)
+        .json({ error: "Consultation fee has already been paid" });
+    }
+
+    if (!paymentDoc) {
+      paymentDoc = new Payment({
+        amount,
+        currency,
+        status: "pending",
+        appointment: appointment._id,
+        purpose: "consultation",
+      });
+      await paymentDoc.save();
+    } else {
+      paymentDoc.amount = amount;
+      paymentDoc.currency = currency;
+      if (paymentDoc.status === "failed") {
+        paymentDoc.status = "pending";
+      }
+      await paymentDoc.save();
+    }
+
+    const existingPatient = await Patient.findById(patientId);
+
+    let paymentResponse = null;
+    try {
+      paymentResponse = await processPayment({
+        phoneNumber: existingPatient.phoneNumber,
+        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+        amount: paymentDoc.amount,
+        currency: paymentDoc.currency,
+        appointmentId: appointment._id,
+        email: existingPatient.email,
+        req,
+      });
+    } catch (paymentError) {
+      if (isMockPayment()) {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+
+        paymentResponse = {
+          status: "success",
+          message: "Payment skipped in non-production environment",
+          meta: { authorization: {} },
+        };
+      } else {
+        throw paymentError;
+      }
+    }
+
+    const redirectUrl =
+      paymentResponse?.meta?.authorization?.redirect ||
+      paymentResponse?.data?.meta?.authorization?.redirect;
+    if (!redirectUrl) {
+      if (paymentDoc.status !== "success") {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+      }
+    }
+
+    const refreshed = await Appointment.findById(appointmentId);
+
+    res.status(200).json({
+      success: true,
+      appointment: refreshed,
+      paymentResponse,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // Get all appointments for the current user
 export const getAppointments = asyncHandler(async (req, res) => {
@@ -329,7 +614,7 @@ export const rescheduleAppointment = asyncHandler(async (req, res) => {
 
 // Cancel appointment with therapist
 export const cancelAppointment = asyncHandler(async (req, res) => {
-  const appointmentId = req.params.id;
+  const appointmentId = req.params._id;
   const result = await AppointmentService.cancelAppointment(appointmentId, req);
 
   res.status(200).json({
