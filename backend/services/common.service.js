@@ -28,9 +28,13 @@ class CommonService {
 
   static async getTherapistRatings(therapistId) {
     try {
-      const therapist = await Therapist.findById(therapistId).populate(
-        "ratings"
-      );
+      const therapist = await Therapist.findById(therapistId).populate({
+        path: "ratings",
+        populate: {
+          path: "patient",
+          select: "firstName lastName patientId",
+        },
+      });
       if (!therapist) {
         throw new Error("Therapist not found");
       }

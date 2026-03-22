@@ -8,7 +8,28 @@ import { signUpTemplate } from "../../utils/emailTemplates.js";
 import TherapistRating from "../../models/therapistRating.model.js";
 import Appointment from "../../models/appointment.model.js";
 import Payment from "../../models/payment.model.js";
+import DailyCheckIn from "../../models/dailyCheckIn.model.js";
 import mongoose from "mongoose";
+
+const mapCheckInHistory = (checkIns = []) =>
+  checkIns.map((checkIn) => ({
+    _id: checkIn._id,
+    date: checkIn.date,
+    painLevel: typeof checkIn.painLevel === "number" ? checkIn.painLevel : null,
+    exerciseCompleted:
+      typeof checkIn.exerciseCompleted === "boolean"
+        ? checkIn.exerciseCompleted
+        : null,
+    adlIndependence: checkIn.adlIndependence || null,
+    bloodPressure: checkIn.bloodPressure || null,
+    heartRateBpm:
+      typeof checkIn.heartRateBpm === "number" ? checkIn.heartRateBpm : null,
+    bloodSugar:
+      typeof checkIn?.bloodSugar?.value === "number" ? checkIn.bloodSugar : null,
+    weightKg: typeof checkIn.weightKg === "number" ? checkIn.weightKg : null,
+    mood: checkIn.mood || null,
+    notes: checkIn.notes || "",
+  }));
 
 const createSendToken = (user, statusCode, res) => {
   const token = generateToken(user._id, user.userType, res);
@@ -246,7 +267,23 @@ export const getPatientDetails = async (req, res) => {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    res.status(200).json({ success: "success", data: patient });
+    const [latestDailyCheckIn, recentDailyCheckIns] = await Promise.all([
+      DailyCheckIn.findOne({ patient: patientId }).sort({ date: -1 }).lean(),
+      DailyCheckIn.find({ patient: patientId })
+        .sort({ date: -1 })
+        .limit(5)
+        .lean(),
+    ]);
+
+    const patientData = patient.toObject();
+    patientData.latestDailyCheckIn = latestDailyCheckIn;
+    patientData.healthIndicators = {
+      bloodPressure: latestDailyCheckIn?.bloodPressure || null,
+      bloodPressureDate: latestDailyCheckIn?.date || null,
+      recentHistory: mapCheckInHistory(recentDailyCheckIns),
+    };
+
+    res.status(200).json({ success: "success", data: patientData });
   } catch (error) {
     console.error("Error fetching therapist details:", error);
     res.status(500).json({ message: "Internal server error", error: error });

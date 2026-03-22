@@ -9,7 +9,7 @@ import {
   appointmentConfirmationTemplate,
   appointmentConfrimationTherapistTemplate,
 } from "../../utils/emailTemplates.js";
-import processPayment from "../../utils/payment.js";
+import processPayment, { isMockPayment } from "../../utils/payment.js";
 import { sendEmail } from "../../utils/sendGridEmail.js";
 
 // import paymentGateway from "../utils/paymentGateway.js";
@@ -214,6 +214,7 @@ export const createAppointment = asyncHandler(async (req, res) => {
         currency: paymentDetails.currency,
         status: "pending",
         appointment: savedAppointment._id,
+        purpose: "registration",
       });
 
       await newPayment.save();
@@ -229,7 +230,7 @@ export const createAppointment = asyncHandler(async (req, res) => {
           req: req,
         });
       } catch (paymentError) {
-        if (process.env.NODE_ENV !== "production") {
+        if (isMockPayment()) {
           newPayment.status = "success";
           await newPayment.save();
 
@@ -340,9 +341,211 @@ export const createAppointment = asyncHandler(async (req, res) => {
   }
 });
 
-// red
+/** Start checkout for an existing appointment that was reserved without payment (e.g. "cart"). */
+export const initiateAppointmentPayment = asyncHandler(async (req, res) => {
+  try {
+    const appointmentId = req.params._id;
+    const patientId = req.user._id;
+    const { amount = 5000, currency = "RWF" } = req.body || {};
 
-// Get all appointments
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    if (appointment.patient.toString() !== patientId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to pay for this appointment" });
+    }
+    if (appointment.status !== "Waiting for Payment") {
+      return res.status(400).json({
+        error: "Payment is only available for appointments awaiting payment",
+      });
+    }
+
+    let paymentDoc = await Payment.findOne({
+      appointment: appointmentId,
+      $or: [{ purpose: { $exists: false } }, { purpose: "registration" }],
+    });
+    if (paymentDoc?.status === "success") {
+      return res.status(400).json({ error: "This appointment is already paid" });
+    }
+
+    if (!paymentDoc) {
+      paymentDoc = new Payment({
+        amount,
+        currency,
+        status: "pending",
+        appointment: appointment._id,
+        purpose: "registration",
+      });
+      await paymentDoc.save();
+    } else {
+      paymentDoc.amount = amount;
+      paymentDoc.currency = currency;
+      if (paymentDoc.status === "failed") {
+        paymentDoc.status = "pending";
+      }
+      await paymentDoc.save();
+    }
+
+    const existingPatient = await Patient.findById(patientId);
+
+    let paymentResponse = null;
+    try {
+      paymentResponse = await processPayment({
+        phoneNumber: existingPatient.phoneNumber,
+        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+        amount: paymentDoc.amount,
+        currency: paymentDoc.currency,
+        appointmentId: appointment._id,
+        email: existingPatient.email,
+        req,
+      });
+    } catch (paymentError) {
+      if (isMockPayment()) {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+
+        appointment.status = "Pending";
+        await appointment.save();
+
+        paymentResponse = {
+          status: "success",
+          message: "Payment skipped in non-production environment",
+          meta: { authorization: {} },
+        };
+      } else {
+        throw paymentError;
+      }
+    }
+
+    const redirectUrl =
+      paymentResponse?.meta?.authorization?.redirect ||
+      paymentResponse?.data?.meta?.authorization?.redirect;
+    if (!redirectUrl) {
+      if (paymentDoc.status !== "success") {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+      }
+      if (appointment.status === "Waiting for Payment") {
+        appointment.status = "Pending";
+        await appointment.save();
+      }
+    }
+
+    const refreshed = await Appointment.findById(appointmentId);
+
+    res.status(200).json({
+      success: true,
+      appointment: refreshed,
+      paymentResponse,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/** Pay consultation fee after visit (uses same processPayment / mock as registration). */
+export const initiateConsultationPayment = asyncHandler(async (req, res) => {
+  try {
+    const appointmentId = req.params._id;
+    const patientId = req.user._id;
+    const { amount = 5000, currency = "RWF" } = req.body || {};
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    if (appointment.patient.toString() !== patientId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to pay for this appointment" });
+    }
+    if (appointment.status !== "Completed") {
+      return res.status(400).json({
+        error:
+          "Consultation fee payment is only available for completed appointments",
+      });
+    }
+
+    let paymentDoc = await Payment.findOne({
+      appointment: appointmentId,
+      purpose: "consultation",
+    });
+    if (paymentDoc?.status === "success") {
+      return res
+        .status(400)
+        .json({ error: "Consultation fee has already been paid" });
+    }
+
+    if (!paymentDoc) {
+      paymentDoc = new Payment({
+        amount,
+        currency,
+        status: "pending",
+        appointment: appointment._id,
+        purpose: "consultation",
+      });
+      await paymentDoc.save();
+    } else {
+      paymentDoc.amount = amount;
+      paymentDoc.currency = currency;
+      if (paymentDoc.status === "failed") {
+        paymentDoc.status = "pending";
+      }
+      await paymentDoc.save();
+    }
+
+    const existingPatient = await Patient.findById(patientId);
+
+    let paymentResponse = null;
+    try {
+      paymentResponse = await processPayment({
+        phoneNumber: existingPatient.phoneNumber,
+        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+        amount: paymentDoc.amount,
+        currency: paymentDoc.currency,
+        appointmentId: appointment._id,
+        email: existingPatient.email,
+        req,
+      });
+    } catch (paymentError) {
+      if (isMockPayment()) {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+
+        paymentResponse = {
+          status: "success",
+          message: "Payment skipped in non-production environment",
+          meta: { authorization: {} },
+        };
+      } else {
+        throw paymentError;
+      }
+    }
+
+    const redirectUrl =
+      paymentResponse?.meta?.authorization?.redirect ||
+      paymentResponse?.data?.meta?.authorization?.redirect;
+    if (!redirectUrl) {
+      if (paymentDoc.status !== "success") {
+        paymentDoc.status = "success";
+        await paymentDoc.save();
+      }
+    }
+
+    const refreshed = await Appointment.findById(appointmentId);
+
+    res.status(200).json({
+      success: true,
+      appointment: refreshed,
+      paymentResponse,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // Get all appointments for the current user
 export const getAppointments = asyncHandler(async (req, res) => {

@@ -55,7 +55,6 @@ function Header({ toggleSidebar }) {
         currentUser?.data?.user?.userType === "therapist"
           ? "/patient/logout"
           : "/patient/logout";
-      // await logout(END_POINT);
 
       if (
         currentUser?.data?.user?.userType === "therapist" ||
@@ -63,13 +62,17 @@ function Header({ toggleSidebar }) {
       ) {
         await logout(END_POINT);
       } else {
-        await axios.post(`${adminBaseURL}/logout`, {
-          headers: {
-            Authorization: `Bearer ${currentUser.token}`,
+        await axios.post(
+          `${adminBaseURL}/logout`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${currentUser.token}`,
+            },
+            withCredentials: true,
           },
-        });
+        );
         localStorage.removeItem("user");
-        toast.success("Logged out successfully");
       }
       setLoading(false);
       toast.success("Logged out successfully");
@@ -201,16 +204,15 @@ function Header({ toggleSidebar }) {
                   to={
                     currentUser?.data?.user.userType === "therapist"
                       ? "/therapist/profile"
-                      : "/patient/profile"
+                      : currentUser?.data?.user.userType === "admin"
+                        ? "/admin/profile"
+                        : "/patient/profile"
                   }
                 >
                   <DropdownItem>
                     <span>Profile</span>
                   </DropdownItem>
                 </Link>
-                <DropdownItem onClick={() => alert("Settings!")}>
-                  <span>Settings</span>
-                </DropdownItem>
                 <DropdownItem onClick={handleLogout}>
                   <span>{loading ? "Logging out ..." : "Logout"}</span>
                 </DropdownItem>

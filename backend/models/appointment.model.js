@@ -83,7 +83,7 @@ const appointmentSchema = new mongoose.Schema({
   },
   appointmentType: {
     type: String,
-    enum: ["in-person", "home-care"],
+    enum: ["in-person", "online", "home-care"],
     default: "in-person",
   },
   service: {

@@ -8,6 +8,7 @@ const FileUpload = ({
   isRequired = false,
   labelText,
   customClass,
+  accept,
 }) => {
   const [fileName, setFileName] = useState(value ? value.name : "");
 
@@ -37,6 +38,7 @@ const FileUpload = ({
           name={name}
           type="file"
           required={isRequired}
+          accept={accept}
           className="hidden"
           onChange={handleFileChange}
         />

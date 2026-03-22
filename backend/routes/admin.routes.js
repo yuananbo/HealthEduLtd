@@ -3,6 +3,8 @@ import { checkSetupKey } from "../middleware/checkSetupKey.js";
 import { checkPasswordStrength } from "../middleware/checkPasswordStrength.js";
 import {
   approveTherapist,
+  createAdminContent,
+  getAdminContentById,
   createAdmin,
   createSuperAdmin,
   disapproveTherapist,
@@ -19,6 +21,8 @@ import {
   loginAdmin,
   logoutAdmin,
   updateAdminBookingStatus,
+  updateAdminContent,
+  updateAdminContentStatus,
   updateAdminUserStatus,
 } from "../controllers/admin/admin.controller.js";
 import validateToken from "../middleware/validateToken.js";
@@ -43,6 +47,9 @@ router.route("/login").post(setupLimiter, loginAdmin);
 // Protected admin routes
 router.use(validateToken);
 router.route("/create").post(checkPasswordStrength, createAdmin);
+router.route("/content").get(getAdminContents).post(createAdminContent);
+router.route("/content/:id").get(getAdminContentById).patch(updateAdminContent);
+router.route("/content/:id/status").patch(updateAdminContentStatus);
 router.route("/dashboard/summary").get(getDashboardSummary);
 router.route("/users").get(getAdminUsers);
 router.route("/users/:id").get(getAdminUserById);

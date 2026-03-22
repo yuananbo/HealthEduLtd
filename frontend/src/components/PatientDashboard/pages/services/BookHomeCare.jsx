@@ -12,6 +12,7 @@ import TherapistCard from "../../../features/cards/SmallCard";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
+import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
 
 const HOME_CARE_SERVICES = [
   "Physical Therapy",
@@ -32,6 +33,7 @@ const BookHomeCare = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [load, setLoad] = useState(false);
   const [formattedData, setFormattedData] = useState(null);
+  const [appointmentType, setAppointmentType] = useState("home-care"); // home-care | online
   const [formData, setFormData] = useState({
     service: selectedHomeCareService || "Physical Therapy",
     purpose: "",
@@ -130,8 +132,8 @@ const BookHomeCare = () => {
           service: formData.service,
           purpose: formData.purpose,
           notes: formData.notes,
-          appointmentType: "home-care",
-          homeAddress: homeAddress,
+          appointmentType,
+          ...(appointmentType === "home-care" ? { homeAddress } : {}),
           paymentDetails: {
             amount: 5000,
             currency: "RWF",
@@ -145,14 +147,11 @@ const BookHomeCare = () => {
         }
       );
 
-      if (
-        response.data.paymentResponse &&
-        response.data.paymentResponse.meta.authorization.redirect
-      ) {
-        window.location.href =
-          response.data.paymentResponse.meta.authorization.redirect;
+      const redirect = getPaymentRedirectUrl(response.data.paymentResponse);
+      if (redirect) {
+        window.location.href = redirect;
       } else {
-        toast.success("Home care appointment booked successfully");
+        toast.success("Appointment booked — payment complete.");
         navigate("/patient/payment-success-page");
       }
     } catch (err) {
@@ -180,7 +179,7 @@ const BookHomeCare = () => {
       return;
     }
 
-    if (!homeAddress.country || !homeAddress.city) {
+    if (appointmentType === "home-care" && (!homeAddress.country || !homeAddress.city)) {
       toast.error(
         "Please provide at least your country and city for the home address"
       );
@@ -198,8 +197,8 @@ const BookHomeCare = () => {
           service: formData.service,
           purpose: formData.purpose,
           notes: formData.notes,
-          appointmentType: "home-care",
-          homeAddress: homeAddress,
+          appointmentType,
+          ...(appointmentType === "home-care" ? { homeAddress } : {}),
           status: "Waiting for Payment",
         },
         {
@@ -210,7 +209,9 @@ const BookHomeCare = () => {
         }
       );
 
-      toast.success("Appointment added to calendar. You can pay later.");
+      toast.success(
+        "Saved as pending payment. Open the appointment and tap Pay when you're ready."
+      );
       navigate("/patient/appointments");
     } catch (err) {
       console.error("Error adding appointment to calendar:", err);
@@ -239,7 +240,7 @@ const BookHomeCare = () => {
       return;
     }
 
-    if (!homeAddress.country || !homeAddress.city) {
+    if (appointmentType === "home-care" && (!homeAddress.country || !homeAddress.city)) {
       toast.error(
         "Please provide at least your country and city for the home address"
       );
@@ -282,11 +283,11 @@ const BookHomeCare = () => {
               <FaHome className="text-lg" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800">
-              Book Home Care Visit
+              Book Assisted Home Care
             </h1>
           </div>
           <p className="text-gray-500 ml-13">
-            A therapist will visit your home for rehabilitation
+            Choose whether you want a home visit or an online meeting.
           </p>
         </div>
         <TherapistCard therapist={therapist} />
@@ -294,6 +295,41 @@ const BookHomeCare = () => {
 
       {formattedData && formattedData.availabilities && (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Session Mode */}
+          <div className="bg-white rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">
+              Session Mode
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => setAppointmentType("home-care")}
+                className={`px-4 py-2 rounded-lg border transition ${
+                  appointmentType === "home-care"
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-400"
+                }`}
+              >
+                At home (home visit)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppointmentType("online")}
+                className={`px-4 py-2 rounded-lg border transition ${
+                  appointmentType === "online"
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-400"
+                }`}
+              >
+                Online meeting
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mt-3">
+              If you choose a home visit, we&apos;ll ask for an address. Online meetings
+              don&apos;t require an address.
+            </p>
+          </div>
+
           {/* Date & Time Selection */}
           <div className="bg-white rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-700">
@@ -322,63 +358,65 @@ const BookHomeCare = () => {
             </div>
           </div>
 
-          {/* Home Address Section */}
-          <div className="bg-white rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-2 text-gray-700 flex items-center">
-              <FaHome className="text-blue-500 mr-2" />
-              Home Address
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              The therapist will visit this address. We&apos;ve pre-filled it from
-              your profile if available.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                handleChange={handleAddressChange}
-                value={homeAddress.country}
-                labelText="Country *"
-                labelFor="country"
-                id="country"
-                name="country"
-                type="text"
-                isRequired={true}
-                placeholder="e.g. Rwanda"
-              />
-              <Input
-                handleChange={handleAddressChange}
-                value={homeAddress.city}
-                labelText="City *"
-                labelFor="city"
-                id="city"
-                name="city"
-                type="text"
-                isRequired={true}
-                placeholder="e.g. Kigali"
-              />
-              <Input
-                handleChange={handleAddressChange}
-                value={homeAddress.district}
-                labelText="District"
-                labelFor="district"
-                id="district"
-                name="district"
-                type="text"
-                isRequired={false}
-                placeholder="e.g. Gasabo"
-              />
-              <Input
-                handleChange={handleAddressChange}
-                value={homeAddress.street}
-                labelText="Street / Detailed Address"
-                labelFor="street"
-                id="street"
-                name="street"
-                type="text"
-                isRequired={false}
-                placeholder="e.g. KG 123 St, House No. 5"
-              />
+          {/* Home Address Section (only for home visit) */}
+          {appointmentType === "home-care" && (
+            <div className="bg-white rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-2 text-gray-700 flex items-center">
+                <FaHome className="text-blue-500 mr-2" />
+                Home Address
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">
+                The therapist will visit this address. We&apos;ve pre-filled it from
+                your profile if available.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  handleChange={handleAddressChange}
+                  value={homeAddress.country}
+                  labelText="Country *"
+                  labelFor="country"
+                  id="country"
+                  name="country"
+                  type="text"
+                  isRequired={true}
+                  placeholder="e.g. Rwanda"
+                />
+                <Input
+                  handleChange={handleAddressChange}
+                  value={homeAddress.city}
+                  labelText="City *"
+                  labelFor="city"
+                  id="city"
+                  name="city"
+                  type="text"
+                  isRequired={true}
+                  placeholder="e.g. Kigali"
+                />
+                <Input
+                  handleChange={handleAddressChange}
+                  value={homeAddress.district}
+                  labelText="District"
+                  labelFor="district"
+                  id="district"
+                  name="district"
+                  type="text"
+                  isRequired={false}
+                  placeholder="e.g. Gasabo"
+                />
+                <Input
+                  handleChange={handleAddressChange}
+                  value={homeAddress.street}
+                  labelText="Street / Detailed Address"
+                  labelFor="street"
+                  id="street"
+                  name="street"
+                  type="text"
+                  isRequired={false}
+                  placeholder="e.g. KG 123 St, House No. 5"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Appointment Details */}
           <div className="bg-white rounded-lg p-6">
@@ -391,7 +429,7 @@ const BookHomeCare = () => {
                   htmlFor="service"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Home Care Service *
+                  Assisted Home Care Service *
                 </label>
                 <select
                   id="service"
@@ -433,20 +471,6 @@ const BookHomeCare = () => {
             </div>
           </div>
 
-          {/* Payment */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-lg p-6 text-white">
-            <h2 className="text-2xl font-bold mb-4">Payment Details</h2>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-3xl font-bold">5,000 RWF</p>
-                <p className="text-sm opacity-75 mt-1">Home visit cost</p>
-              </div>
-              <div className="bg-white text-blue-600 py-2 px-4 rounded-full font-semibold">
-                Secure Appointment Now
-              </div>
-            </div>
-          </div>
-
           {/* Submit */}
           <div className="flex flex-col sm:flex-row justify-end gap-4">
             <button
@@ -455,7 +479,7 @@ const BookHomeCare = () => {
               disabled={load}
               className="border-2 border-blue-600 text-blue-600 py-3 px-6 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-lg font-semibold transition duration-150 ease-in-out"
             >
-              {load ? "Adding..." : "Add to Calendar"}
+              {load ? "Saving..." : "Add to cart (pay later)"}
             </button>
             <button
               type="submit"

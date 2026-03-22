@@ -21,6 +21,12 @@ const paymentSchema = new mongoose.Schema({
     enum: ["pending", "processing", "success", "failed"],
     default: "pending",
   },
+  /** registration = booking fee at booking; consultation = fee after visit */
+  purpose: {
+    type: String,
+    enum: ["registration", "consultation"],
+    default: "registration",
+  },
   createdAt: {
     type: Date,
     default: Date.now,
