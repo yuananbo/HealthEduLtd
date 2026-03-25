@@ -256,10 +256,9 @@ class AvailabilityService {
         },
       },
       {
-        $set: {
-          isActive: true,
-          "availabilities.$[d].times.$[t].isActive": true,
-        },
+        // Only release the slot itself; do not touch the schedule-level isActive
+        // flag so that a therapist's intentional deactivation is not overridden.
+        $set: { "availabilities.$[d].times.$[t].isActive": true },
       },
       {
         arrayFilters: [
@@ -345,11 +344,9 @@ class AvailabilityService {
 
     timeEntry.isActive = Boolean(isActive);
 
-    // Keep parent availability visibility in sync with slot-level availability.
-    const hasAnyActiveSlot = (availability.availabilities || []).some((d) =>
-      (d.times || []).some((slot) => Boolean(slot.isActive))
-    );
-    availability.isActive = hasAnyActiveSlot;
+    // Schedule-level isActive (patient visibility) is managed independently via
+    // setAvailabilityActive / setAvailabilityInactive and is not derived from
+    // slot states, so we do not touch it here.
 
     await availability.save();
 
@@ -367,16 +364,9 @@ class AvailabilityService {
       throw new Error("Availability not found or not authorized");
     }
 
+    // Only toggle the schedule-level visibility flag.
+    // Individual slot states (reserved vs. available) are preserved.
     updatedAvailability.isActive = true;
-    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
-      (dateEntry) => ({
-        ...dateEntry.toObject(),
-        times: (dateEntry.times || []).map((slot) => ({
-          ...slot.toObject(),
-          isActive: true,
-        })),
-      })
-    );
 
     await updatedAvailability.save();
 
@@ -394,16 +384,9 @@ class AvailabilityService {
       throw new Error("Availability not found or not authorized");
     }
 
+    // Only toggle the schedule-level visibility flag.
+    // Individual slot states (reserved vs. available) are preserved.
     updatedAvailability.isActive = false;
-    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
-      (dateEntry) => ({
-        ...dateEntry.toObject(),
-        times: (dateEntry.times || []).map((slot) => ({
-          ...slot.toObject(),
-          isActive: false,
-        })),
-      })
-    );
 
     await updatedAvailability.save();
 

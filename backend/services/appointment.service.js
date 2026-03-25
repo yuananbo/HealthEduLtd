@@ -22,6 +22,17 @@ class AppointmentService {
     "Waiting for Payment",
   ];
 
+  // Allowed status transitions: key = current status, value = allowed next statuses
+  static VALID_TRANSITIONS = {
+    "Waiting for Payment": ["Pending", "Cancelled"],
+    "Pending": ["Accepted", "Declined", "Cancelled"],
+    "Rescheduled": ["Accepted", "Declined", "Cancelled"],
+    "Accepted": ["Completed", "Cancelled"],
+    "Declined": [],
+    "Completed": [],
+    "Cancelled": [],
+  };
+
   static buildActorFromRequest(req) {
     const user = req?.user;
 
@@ -294,14 +305,7 @@ class AppointmentService {
       throw new NotFoundError("Appointment not found");
     }
 
-    const validStatuses = [
-      "Pending",
-      "Accepted",
-      "Declined",
-      "Completed",
-      "Cancelled",
-    ];
-    if (!validStatuses.includes(status)) {
+    if (!this.VALID_STATUS_OPTIONS.includes(status)) {
       throw new Error("Invalid status");
     }
 
@@ -309,9 +313,10 @@ class AppointmentService {
       return { appointment };
     }
 
-    if (status === "Completed" && appointment.status !== "Accepted") {
+    const allowedTransitions = this.VALID_TRANSITIONS[appointment.status] || [];
+    if (!allowedTransitions.includes(status)) {
       const transitionError = new Error(
-        "Only accepted appointments can be marked as completed"
+        `Cannot transition appointment from "${appointment.status}" to "${status}"`
       );
       transitionError.status = 400;
       throw transitionError;
