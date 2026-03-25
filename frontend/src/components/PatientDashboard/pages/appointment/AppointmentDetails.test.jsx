@@ -200,6 +200,7 @@ describe("Patient appointment details", () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/rating/therapist-1", {
+        appointmentId: "appointment-1",
         rating: 5,
         review: "Excellent therapist",
       });
@@ -223,6 +224,7 @@ describe("Patient appointment details", () => {
           ratings: [
             {
               patient: { _id: "patient-1" },
+              appointment: { _id: "appointment-1" },
               rating: 4,
               review: "",
               createdAt: "2026-03-22T00:00:00.000Z",

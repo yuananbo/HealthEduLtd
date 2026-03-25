@@ -407,8 +407,12 @@ export const initiateAppointmentPayment = asyncHandler(async (req, res) => {
         paymentDoc.status = "success";
         await paymentDoc.save();
 
-        appointment.status = "Pending";
-        await appointment.save();
+        await AppointmentService.updateStatusWithHistory(appointment, {
+          status: "Pending",
+          actor: { userId: patientId, userType: "patient", name: `${existingPatient.firstName} ${existingPatient.lastName}`.trim() || "Patient" },
+          source: "payment-confirmed",
+          reason: "Payment confirmed in non-production environment",
+        });
 
         paymentResponse = {
           status: "success",
@@ -429,8 +433,12 @@ export const initiateAppointmentPayment = asyncHandler(async (req, res) => {
         await paymentDoc.save();
       }
       if (appointment.status === "Waiting for Payment") {
-        appointment.status = "Pending";
-        await appointment.save();
+        await AppointmentService.updateStatusWithHistory(appointment, {
+          status: "Pending",
+          actor: { userId: patientId, userType: "patient", name: `${existingPatient.firstName} ${existingPatient.lastName}`.trim() || "Patient" },
+          source: "payment-confirmed",
+          reason: "Payment marked successful without redirect flow",
+        });
       }
     }
 

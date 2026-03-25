@@ -77,7 +77,8 @@ const AppointmentDetails = () => {
           ? response.data.therapist.ratings
           : [];
         const matchedReview = ratings.find(
-          (item) => String(item?.patient?._id) === String(patientId)
+          (item) =>
+            String(item?.appointment?._id || item?.appointment) === String(id)
         );
 
         setExistingReview(matchedReview || null);
@@ -146,6 +147,7 @@ const AppointmentDetails = () => {
     try {
       setSubmittingReview(true);
       const response = await api.post(`/rating/${appointment.data.therapist}`, {
+        appointmentId: id,
         rating: reviewRating,
         review: reviewText.trim(),
       });
