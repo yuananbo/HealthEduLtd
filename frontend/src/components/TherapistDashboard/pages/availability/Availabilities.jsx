@@ -10,13 +10,7 @@ const Availabilities = () => {
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const {
-    activateAvailability,
-    deactivateAvailability,
-    deleteAvailability,
-    isLoading,
-    error,
-  } = useAvailability(handleUpdate);
+  const { isLoading, error } = useAvailability(handleUpdate);
 
   useEffect(() => {
     fetchAvailabilities();
@@ -36,7 +30,7 @@ const Availabilities = () => {
     }
   };
 
-  function handleUpdate(id) {
+  function handleUpdate(_id) {
     fetchAvailabilities();
   }
 

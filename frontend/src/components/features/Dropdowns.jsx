@@ -1,6 +1,6 @@
 import React from "react";
 
-const Dropdown = ({ children, isOpen, align, onClose }) => {
+const Dropdown = ({ children, isOpen, align, onClose: _onClose }) => {
   return (
     isOpen && (
       <div

@@ -78,7 +78,7 @@ const Education = () => {
   const [dynamicLoading, setDynamicLoading] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
   const [savedContents, setSavedContents] = useState([]);
-  const [savedContentsLoading, setSavedContentsLoading] = useState(false);
+  const [, setSavedContentsLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [therapists, setTherapists] = useState([]);
   const [therapistsLoading, setTherapistsLoading] = useState(false);
@@ -176,7 +176,7 @@ const Education = () => {
     }
   };
 
-  const handleShare = async (content) => {
+  const handleShare = async (_content) => {
     // Fetch therapists list
     setTherapistsLoading(true);
     try {
@@ -201,7 +201,7 @@ const Education = () => {
     }
   };
 
-  const handleShareToTherapist = async (therapist, content) => {
+  const handleShareToTherapist = async (_therapist, _content) => {
     try {
       setShareSuccess(true);
       setTimeout(() => {

@@ -1,20 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-const WithdrawalRequestsTab = ({ therapistId }) => {
+const WithdrawalRequestsTab = ({ therapistId: _therapistId }) => {
   // Fetch withdrawal requests here
-
-  const handleApprove = (requestId) => {
-    // Implement approve logic
-  };
-
-  const handleReject = (requestId) => {
-    // Implement reject logic
-  };
-
-  const handleRequestDetails = (requestId) => {
-    // Implement request more details logic
-  };
 
   return (
     <motion.div

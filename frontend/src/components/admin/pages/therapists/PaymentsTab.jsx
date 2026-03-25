@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 
-const PaymentsTab = ({ therapistId }) => {
+const PaymentsTab = ({ therapistId: _therapistId }) => {
   const [amount, setAmount] = useState("");
 
   const handlePayment = () => {

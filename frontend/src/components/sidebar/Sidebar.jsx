@@ -6,7 +6,7 @@ const Sidebar = ({ routes }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
-  const { isSidebarOpen, closeSidebar } = useContext(SidebarContext);
+  const { closeSidebar } = useContext(SidebarContext);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

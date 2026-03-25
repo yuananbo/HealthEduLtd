@@ -3,9 +3,9 @@ import Button from "../../../common/Button";
 
 const TherapistCard = ({
   therapist,
-  onViewProfile,
+  onViewProfile: _onViewProfile,
   onBookAppointment,
-  viewProfileLabel = "View Profile",
+  viewProfileLabel: _viewProfileLabel = "View Profile",
   bookAppointmentLabel = "Book Appointment",
   showButtons = true,
   className = "",

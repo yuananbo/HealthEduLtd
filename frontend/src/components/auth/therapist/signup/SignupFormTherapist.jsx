@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import PersonalInfo from "./PersonalInfo";
 import ProfessionalInfo from "./ProfessionalInfo";
 import ProgressBar from "../../../utilities/ProgressBar";
-import { signup } from "../../../../services/AuthServices";
 import RequiredFiles from "./RequiredFiles.";
 import api from "../../../../utils/api";
 

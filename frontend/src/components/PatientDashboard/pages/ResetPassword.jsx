@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import api from "../../../utils/api";
 import Input from "../../common/forms/Input";
 
 const ResetPassword = () => {
@@ -21,18 +21,19 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { password, confirmPassword } = inputs;
     if (password !== confirmPassword) {
       alert("Passwords do not match");
       return;
     }
     try {
-      await axios.post("/api/patients/reset-password", {
+      await api.post("/patient/reset-password", {
         token,
         password,
         confirmPassword,
       });
       alert("Password reset successfully");
-      navigate("/login");
+      navigate("/patient/login");
     } catch (error) {
       console.error("Error:", error);
       alert("Error resetting password");

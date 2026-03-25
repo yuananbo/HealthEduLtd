@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 
-const AvailabilityDayPicker = ({ onDateClick, selectedDates }) => {
+const AvailabilityDayPicker = ({ onDateClick, selectedDates: _selectedDates }) => {
   const [selectedDate, setSelectedDate] = useState(null);
 
   const handleDateClick = (date) => {

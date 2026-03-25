@@ -2,7 +2,6 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
 const apiLocalUrl = "http://localhost:8000/";
-const apiLiveUrl = "https://mobirehab.onrender.com/";
 
 const api = axios.create({
   baseURL: `${apiLocalUrl}api/v1/`,

@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useContext(UserContext);
 
-  const [loading, error, therapistData, refetchTherapistData] =
+  const [loading, , therapistData, refetchTherapistData] =
     useDataFetching("/therapist/profile");
 
   useEffect(() => {

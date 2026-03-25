@@ -1,5 +1,8 @@
-# A2: Code quality (ESLint) + unit tests via GitHub Actions
+
 name: CI — Lint & unit tests
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
@@ -18,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -33,14 +36,13 @@ jobs:
   test:
     name: Unit tests
     runs-on: ubuntu-latest
-    # Assignment: run tests on push to main OR on any pull request
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: |
             package-lock.json

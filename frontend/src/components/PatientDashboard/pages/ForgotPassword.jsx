@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import Input from "../../common/forms/Input";
 import FormAction from "../../common/forms/FormAction";
 import api from "../../../utils/api";
