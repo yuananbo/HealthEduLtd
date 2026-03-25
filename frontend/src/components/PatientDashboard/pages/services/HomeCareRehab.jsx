@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import TherapistCard from "../../pages/therapists/TherapistCard";
+import TherapistProfileModal from "../../pages/therapists/TherapistProfileModal";
 import useDataFetching from "../../../../hooks/useFech";
 import Loading from "../../../utilities/Loading";
 import { FaHome } from "react-icons/fa";
@@ -34,6 +35,7 @@ const HomeCareRehab = () => {
   const [selectedService, setSelectedService] = useState("all");
   const [filteredTherapists, setFilteredTherapists] = useState([]);
   const [allTherapists, setAllTherapists] = useState([]);
+  const [profileModal, setProfileModal] = useState({ open: false, therapist: null });
   const [loading, error, data] = useDataFetching("/patient/therapists");
   const navigate = useNavigate();
 
@@ -47,6 +49,8 @@ const HomeCareRehab = () => {
         profilePicture: therapist.profilePicture,
         bio: therapist.bio,
         specialties: [therapist.specialization],
+        averageRating: therapist.averageRating ?? 0,
+        reviewCount: therapist.reviewCount ?? 0,
       }));
       setAllTherapists(therapists);
       setFilteredTherapists(therapists);
@@ -93,6 +97,8 @@ const HomeCareRehab = () => {
           city: therapist.city,
           country: therapist.country,
           bio: therapist.bio,
+          averageRating: therapist.averageRating,
+          reviewCount: therapist.reviewCount,
         },
         selectedHomeCareService: selectedServiceLabel,
       },
@@ -196,6 +202,9 @@ const HomeCareRehab = () => {
                     <TherapistCard
                       therapist={therapist}
                       onBookAppointment={() => handleBookHomeCare(therapist)}
+                      onViewDetails={() =>
+                        setProfileModal({ open: true, therapist })
+                      }
                       bookAppointmentLabel="Book Appointment"
                     />
                   </motion.div>
@@ -234,6 +243,13 @@ const HomeCareRehab = () => {
           </AnimatePresence>
         )}
       </div>
+
+      <TherapistProfileModal
+        isOpen={profileModal.open}
+        onClose={() => setProfileModal({ open: false, therapist: null })}
+        therapistId={profileModal.therapist?.id}
+        summary={profileModal.therapist}
+      />
     </div>
   );
 };

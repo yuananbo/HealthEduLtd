@@ -52,7 +52,9 @@ const PatientProfilePage = () => {
         reloadPatient={reloadPatient}
       />
     ),
-    security: <SecurityTab />,
+    security: (
+      <SecurityTab patient={patient} reloadPatient={reloadPatient} />
+    ),
   };
 
   const tabVariants = {

@@ -4,7 +4,9 @@ import path from "path";
 import fs from "fs";
 import {
   addMedicalHistory,
+  changePassword,
   deleteMedicalHistory,
+  deletePatientAccount,
   deletePrescription,
   editPatientProfile,
   getAllVerifiedTherapists,
@@ -14,6 +16,7 @@ import {
   sendPasswordResetLink,
   signupPatient,
   updateMedicalHistory,
+  updatePatientTwoFactor,
 } from "../controllers/patient/patients.controller.js";
 import validateToken from "../middleware/validateToken.js";
 import {
@@ -122,6 +125,13 @@ router
 router.delete("/profile/prescriptions/:prescriptionId", deletePrescription);
 
 router.post("/logout", logoutPatient);
+
+// POST + PATCH: some clients / proxies mishandle PATCH and surface 404
+router.post("/change-password", changePassword);
+router.patch("/change-password", changePassword);
+router.post("/security/two-factor", updatePatientTwoFactor);
+router.patch("/security/two-factor", updatePatientTwoFactor);
+router.delete("/account", deletePatientAccount);
 
 // Monitoring / daily check-ins
 router
