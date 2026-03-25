@@ -57,7 +57,7 @@ describe("therapist common controller", () => {
     const req = {
       params: { id: "therapist-1" },
       user: { _id: "patient-1" },
-      body: { rating: 4, review: "Helpful" },
+      body: { appointmentId: "appointment-1", rating: 4, review: "Helpful" },
     };
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() };
 
@@ -66,6 +66,7 @@ describe("therapist common controller", () => {
     expect(addTherapistRatingMock).toHaveBeenCalledWith(
       "patient-1",
       "therapist-1",
+      "appointment-1",
       4,
       "Helpful"
     );
@@ -81,7 +82,7 @@ describe("therapist common controller", () => {
     const req = {
       params: { id: "therapist-1" },
       user: { _id: "patient-1" },
-      body: { rating: 4, review: "Helpful" },
+      body: { appointmentId: "appointment-1", rating: 4, review: "Helpful" },
     };
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() };
 
@@ -89,6 +90,28 @@ describe("therapist common controller", () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ message: "Server error" });
+  });
+
+  it("addRating returns the business validation status from the service", async () => {
+    const error = new Error("This appointment has already been rated");
+    error.statusCode = 409;
+    addTherapistRatingMock.mockRejectedValue(error);
+
+    const { addRating } = await import("./common.controller.js");
+
+    const req = {
+      params: { id: "therapist-1" },
+      user: { _id: "patient-1" },
+      body: { appointmentId: "appointment-1", rating: 4, review: "Helpful" },
+    };
+    const res = { json: vi.fn(), status: vi.fn().mockReturnThis() };
+
+    await addRating(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "This appointment has already been rated",
+    });
   });
 
   it("getTherapistProfileWithRatings returns the authenticated therapist profile", async () => {

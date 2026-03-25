@@ -89,7 +89,10 @@ const initDatabase = async () => {
     // TherapistRating indexes
     await TherapistRating.collection.createIndex({ therapist: 1 });
     await TherapistRating.collection.createIndex({ patient: 1 });
-    await TherapistRating.collection.createIndex({ patient: 1, therapist: 1 });
+    await TherapistRating.collection.createIndex(
+      { appointment: 1 },
+      { unique: true }
+    );
     console.log("  ✓ TherapistRating indexes created");
 
     // EducationContent indexes

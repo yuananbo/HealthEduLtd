@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findByIdMock = vi.fn();
 const populateMock = vi.fn();
 const findByIdAndUpdateMock = vi.fn();
+const findOneRatingMock = vi.fn();
+const findByIdAppointmentMock = vi.fn();
 const saveMock = vi.fn();
 const TherapistRatingMock = vi.fn();
 
@@ -13,8 +15,16 @@ vi.mock("../models/therapist.model.js", () => ({
   },
 }));
 
+vi.mock("../models/appointment.model.js", () => ({
+  default: {
+    findById: findByIdAppointmentMock,
+  },
+}));
+
 vi.mock("../models/therapistRating.model.js", () => ({
-  default: TherapistRatingMock,
+  default: Object.assign(TherapistRatingMock, {
+    findOne: findOneRatingMock,
+  }),
 }));
 
 describe("CommonService", () => {
@@ -24,6 +34,8 @@ describe("CommonService", () => {
     populateMock.mockReset();
     findByIdMock.mockReset();
     findByIdAndUpdateMock.mockReset();
+    findOneRatingMock.mockReset();
+    findByIdAppointmentMock.mockReset();
     saveMock.mockReset();
     TherapistRatingMock.mockReset();
     TherapistRatingMock.mockImplementation(function MockTherapistRating(data) {
@@ -62,10 +74,16 @@ describe("CommonService", () => {
     expect(findByIdMock).toHaveBeenCalledWith("therapist-1");
     expect(populateMock).toHaveBeenCalledWith({
       path: "ratings",
-      populate: {
-        path: "patient",
-        select: "firstName lastName patientId",
-      },
+      populate: [
+        {
+          path: "patient",
+          select: "firstName lastName patientId",
+        },
+        {
+          path: "appointment",
+          select: "_id status date service",
+        },
+      ],
     });
     expect(result).toEqual(therapist);
   });
@@ -84,16 +102,27 @@ describe("CommonService", () => {
   });
 
   it("addTherapistRating saves the rating and links it to the therapist", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue(null);
+
     const { default: CommonService } = await import("./common.service.js");
 
     const created = await CommonService.addTherapistRating(
       "patient-1",
       "therapist-1",
+      "appointment-1",
       5,
       "Excellent care"
     );
 
     expect(TherapistRatingMock).toHaveBeenCalledWith({
+      appointment: "appointment-1",
       patient: "patient-1",
       therapist: "therapist-1",
       rating: 5,
@@ -107,10 +136,37 @@ describe("CommonService", () => {
     );
     expect(created).toMatchObject({
       _id: "rating-1",
+      appointment: "appointment-1",
       patient: "patient-1",
       therapist: "therapist-1",
       rating: 5,
       review: "Excellent care",
+    });
+  });
+
+  it("addTherapistRating rejects duplicate ratings for the same appointment", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue({ _id: "rating-existing" });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-1",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "This appointment has already been rated",
+      statusCode: 409,
     });
   });
 });

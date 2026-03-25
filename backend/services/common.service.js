@@ -1,10 +1,64 @@
 import Therapist from "../models/therapist.model.js";
 import TherapistRating from "../models/therapistRating.model.js";
+import Appointment from "../models/appointment.model.js";
+
+const createServiceError = (message, statusCode) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
 
 class CommonService {
-  static async addTherapistRating(patientId, therapistId, rating, review) {
+  static async addTherapistRating(
+    patientId,
+    therapistId,
+    appointmentId,
+    rating,
+    review
+  ) {
     try {
+      const appointment = await Appointment.findById(appointmentId).select(
+        "patient therapist status"
+      );
+
+      if (!appointment) {
+        throw createServiceError("Appointment not found", 404);
+      }
+
+      if (String(appointment.patient) !== String(patientId)) {
+        throw createServiceError(
+          "You can only rate your own completed appointments",
+          403
+        );
+      }
+
+      if (String(appointment.therapist) !== String(therapistId)) {
+        throw createServiceError(
+          "This appointment does not belong to the selected therapist",
+          400
+        );
+      }
+
+      if (appointment.status !== "Completed") {
+        throw createServiceError(
+          "Only completed appointments can be rated",
+          400
+        );
+      }
+
+      const existingRating = await TherapistRating.findOne({
+        appointment: appointmentId,
+      });
+
+      if (existingRating) {
+        throw createServiceError(
+          "This appointment has already been rated",
+          409
+        );
+      }
+
       const newRating = new TherapistRating({
+        appointment: appointmentId,
         patient: patientId,
         therapist: therapistId,
         rating,
@@ -22,7 +76,7 @@ class CommonService {
       return newRating;
     } catch (error) {
       console.log("Error adding rating", error);
-      throw new Error(error.message);
+      throw error;
     }
   }
 
@@ -30,10 +84,16 @@ class CommonService {
     try {
       const therapist = await Therapist.findById(therapistId).populate({
         path: "ratings",
-        populate: {
-          path: "patient",
-          select: "firstName lastName patientId",
-        },
+        populate: [
+          {
+            path: "patient",
+            select: "firstName lastName patientId",
+          },
+          {
+            path: "appointment",
+            select: "_id status date service",
+          },
+        ],
       });
       if (!therapist) {
         throw new Error("Therapist not found");

@@ -20,7 +20,7 @@ export const getTherapistRatings = async (req, res) => {
 };
 
 export const addRating = async (req, res) => {
-  const { rating, review } = req.body;
+  const { rating, review, appointmentId } = req.body;
   const therapistId = req.params.id;
   const patientId = req.user._id;
 
@@ -28,13 +28,16 @@ export const addRating = async (req, res) => {
     const newRating = await CommonService.addTherapistRating(
       patientId,
       therapistId,
+      appointmentId,
       rating,
       review
     );
     res.status(201).json({ success: "success", rating: newRating });
   } catch (err) {
     console.log("Error adding rating:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Server error",
+    });
   }
 };
 
