@@ -14,7 +14,8 @@ class CommonService {
     therapistId,
     appointmentId,
     rating,
-    review
+    review,
+    isAnonymous = false
   ) {
     try {
       const appointment = await Appointment.findById(appointmentId).select(
@@ -63,6 +64,7 @@ class CommonService {
         therapist: therapistId,
         rating,
         review,
+        isAnonymous: Boolean(isAnonymous),
       });
 
       await newRating.save();
@@ -98,7 +100,14 @@ class CommonService {
       if (!therapist) {
         throw new Error("Therapist not found");
       }
-      return therapist;
+      const plain = therapist.toObject();
+      plain.ratings = (plain.ratings || []).map((r) => {
+        if (r.isAnonymous) {
+          return { ...r, patient: null };
+        }
+        return r;
+      });
+      return plain;
     } catch (error) {
       console.error("Error fetching therapist profile:", error);
       throw error;

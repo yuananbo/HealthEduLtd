@@ -28,6 +28,10 @@ const therapistRatingSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

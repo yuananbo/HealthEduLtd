@@ -20,7 +20,7 @@ export const getTherapistRatings = async (req, res) => {
 };
 
 export const addRating = async (req, res) => {
-  const { rating, review, appointmentId } = req.body;
+  const { rating, review, appointmentId, isAnonymous } = req.body;
   const therapistId = req.params.id;
   const patientId = req.user._id;
 
@@ -30,7 +30,8 @@ export const addRating = async (req, res) => {
       therapistId,
       appointmentId,
       rating,
-      review
+      review,
+      Boolean(isAnonymous)
     );
     res.status(201).json({ success: "success", rating: newRating });
   } catch (err) {
