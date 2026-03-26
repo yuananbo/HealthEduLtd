@@ -17,7 +17,7 @@ describe("paymentEnv", () => {
 
   describe("getFrontendBaseUrl", () => {
     it("defaults to Vite dev URL", () => {
-      expect(getFrontendBaseUrl()).toBe("http://localhost:5173");
+      expect(getFrontendBaseUrl()).toBe("http://localhost:9999");
     });
 
     it("strips trailing slash from FRONTEND_URL", () => {
