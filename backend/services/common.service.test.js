@@ -62,8 +62,19 @@ describe("CommonService", () => {
   });
 
   it("getTherapistRatings populates ratings and nested patient info", async () => {
-    const therapist = { _id: "therapist-1", ratings: [{ rating: 5 }] };
-    populateMock.mockResolvedValue(therapist);
+    const plain = {
+      _id: "therapist-1",
+      ratings: [
+        {
+          rating: 5,
+          isAnonymous: false,
+          patient: { firstName: "A", lastName: "B", patientId: "P1" },
+        },
+      ],
+    };
+    populateMock.mockResolvedValue({
+      toObject: () => plain,
+    });
     findByIdMock.mockReturnValue({
       populate: populateMock,
     });
@@ -85,7 +96,32 @@ describe("CommonService", () => {
         },
       ],
     });
-    expect(result).toEqual(therapist);
+    expect(result).toEqual(plain);
+  });
+
+  it("getTherapistRatings strips patient details for anonymous ratings", async () => {
+    const plain = {
+      _id: "therapist-1",
+      ratings: [
+        {
+          rating: 4,
+          isAnonymous: true,
+          patient: { firstName: "Secret", lastName: "User", patientId: "PX" },
+        },
+      ],
+    };
+    populateMock.mockResolvedValue({
+      toObject: () => plain,
+    });
+    findByIdMock.mockReturnValue({
+      populate: populateMock,
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+    const result = await CommonService.getTherapistRatings("therapist-1");
+
+    expect(result.ratings[0].patient).toBeNull();
+    expect(result.ratings[0].isAnonymous).toBe(true);
   });
 
   it("getTherapistRatings throws when the therapist does not exist", async () => {
@@ -127,6 +163,7 @@ describe("CommonService", () => {
       therapist: "therapist-1",
       rating: 5,
       review: "Excellent care",
+      isAnonymous: false,
     });
     expect(saveMock).toHaveBeenCalled();
     expect(findByIdAndUpdateMock).toHaveBeenCalledWith(
@@ -167,6 +204,37 @@ describe("CommonService", () => {
     ).rejects.toMatchObject({
       message: "This appointment has already been rated",
       statusCode: 409,
+    });
+  });
+
+  it("addTherapistRating stores isAnonymous when true", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue(null);
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await CommonService.addTherapistRating(
+      "patient-1",
+      "therapist-1",
+      "appointment-1",
+      5,
+      "Great",
+      true
+    );
+
+    expect(TherapistRatingMock).toHaveBeenCalledWith({
+      appointment: "appointment-1",
+      patient: "patient-1",
+      therapist: "therapist-1",
+      rating: 5,
+      review: "Great",
+      isAnonymous: true,
     });
   });
 });
