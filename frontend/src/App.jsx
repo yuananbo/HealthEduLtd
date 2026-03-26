@@ -7,6 +7,8 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { SidebarProvider } from "./context/SidebarContext";
 
 function App() {
+  const lintFailureDemo = "intentional";
+
   return (
     <>
       <BrowserRouter>
