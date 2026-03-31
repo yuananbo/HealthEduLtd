@@ -64,7 +64,7 @@ const seedTestTherapist = async () => {
     await mongoose.connect(process.env.DBCONNECTION);
     console.log("Connected.\n");
 
-    const existing = await Therapist.findOne({ email: TEST_THERAPIST_2.email });
+    const existing = await Therapist.findOne({ email: TEST_THERAPIST.email });
     if (existing) {
       console.log("Test therapist already exists. Updating to verified...");
       existing.isVerified = true;
@@ -72,7 +72,7 @@ const seedTestTherapist = async () => {
       await existing.save();
       console.log("Updated:", existing.email, "| isVerified:", existing.isVerified);
     } else {
-      const therapist = new Therapist(TEST_THERAPIST_2);
+      const therapist = new Therapist(TEST_THERAPIST);
       await therapist.save();
       console.log("Created test therapist:");
       console.log("  Email:", therapist.email);
