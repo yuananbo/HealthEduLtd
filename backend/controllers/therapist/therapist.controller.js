@@ -55,6 +55,7 @@ const createSendToken = (user, statusCode, res) => {
 
 export const signupTherapist = async (req, res) => {
   try {
+    const isDevelopment = process.env.NODE_ENV === "development";
     const {
       firstName,
       lastName,
@@ -136,10 +137,19 @@ export const signupTherapist = async (req, res) => {
       cloudinaryId: uploadResults[0].public_id,
       cv: uploadResults[1].secure_url,
       licenseDocument: uploadResults[2].secure_url,
-      active: false,
+      active: isDevelopment ? true : false,
+      isVerified: isDevelopment ? true : false,
       otp: null,
       otpExpires: null,
     });
+
+    if (isDevelopment) {
+      return res.status(201).json({
+        status: "success",
+        message: "Account created (development mode: auto-verified).",
+        user: newTherapist,
+      });
+    }
 
     // Generate OTP
     const otp = await newTherapist.createOTP();
