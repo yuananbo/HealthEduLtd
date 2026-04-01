@@ -1,0 +1,257 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import TherapistCard from "../../pages/therapists/TherapistCard";
+import TherapistProfileModal from "../../pages/therapists/TherapistProfileModal";
+import useDataFetching from "../../../../hooks/useFech";
+import Loading from "../../../utilities/Loading";
+import { FaHome } from "react-icons/fa";
+
+const HOME_CARE_SERVICES = [
+  { id: "all", label: "All" },
+  { id: "physical-therapy", label: "Physical Therapy" },
+  { id: "occupational-therapy", label: "Occupational Therapy" },
+  { id: "prosthetics-orthotics", label: "Prosthetics and Orthotics" },
+  {
+    id: "family-medicine-chronic-care",
+    label: "Family Medicine & Chronic Care",
+  },
+  { id: "mental-health", label: "Mental Health" },
+  { id: "nutrition", label: "Nutrition" },
+];
+
+const SERVICE_TO_SPECIALIZATIONS = {
+  "physical-therapy": ["Physiotherapist"],
+  "occupational-therapy": ["Occupational Therapist"],
+  "prosthetics-orthotics": ["Prosthetist and Orthotist"],
+  "family-medicine-chronic-care": ["Medical Doctor", "Nurse"],
+  "mental-health": ["Counsellor"],
+  nutrition: ["Nutritionist"],
+};
+
+const HomeCareRehab = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSpecialty, setSelectedSpecialty] = useState("");
+  const [selectedService, setSelectedService] = useState("all");
+  const [filteredTherapists, setFilteredTherapists] = useState([]);
+  const [allTherapists, setAllTherapists] = useState([]);
+  const [profileModal, setProfileModal] = useState({ open: false, therapist: null });
+  const [loading, error, data] = useDataFetching("/patient/therapists");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (data && data.status === "success" && data.data) {
+      const therapists = data.data.map((therapist) => ({
+        id: therapist._id,
+        fullName: `${therapist.firstName} ${therapist.lastName}`,
+        city: therapist.address.city,
+        country: therapist.address.country,
+        profilePicture: therapist.profilePicture,
+        bio: therapist.bio,
+        specialties: [therapist.specialization],
+        averageRating: therapist.averageRating ?? 0,
+        reviewCount: therapist.reviewCount ?? 0,
+      }));
+      setAllTherapists(therapists);
+      setFilteredTherapists(therapists);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (allTherapists.length > 0) {
+      const allowedSpecializations =
+        selectedService === "all"
+          ? null
+          : SERVICE_TO_SPECIALIZATIONS[selectedService] || [];
+
+      const filtered = allTherapists.filter(
+        (therapist) =>
+          therapist.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!allowedSpecializations ||
+            therapist.specialties.some((s) => allowedSpecializations.includes(s))) &&
+          (selectedSpecialty === "" ||
+            selectedSpecialty === "All" ||
+            therapist.specialties.includes(selectedSpecialty))
+      );
+      setFilteredTherapists(filtered);
+    }
+  }, [searchTerm, selectedService, selectedSpecialty, allTherapists]);
+
+  const specialties = [
+    "All",
+    ...new Set(allTherapists.flatMap((therapist) => therapist.specialties)),
+  ];
+
+  const handleBookHomeCare = (therapist) => {
+    const selectedServiceLabel =
+      HOME_CARE_SERVICES.find((s) => s.id === selectedService)?.label ||
+      "Assisted Home Care";
+
+    navigate("/patient/home-care/book", {
+      state: {
+        therapist: {
+          id: therapist.id,
+          fullName: therapist.fullName,
+          specialties: therapist.specialties,
+          profilePicture: therapist.profilePicture,
+          city: therapist.city,
+          country: therapist.country,
+          bio: therapist.bio,
+          averageRating: therapist.averageRating,
+          reviewCount: therapist.reviewCount,
+        },
+        selectedHomeCareService: selectedServiceLabel,
+      },
+    });
+  };
+
+  if (loading) {
+    return <Loading />;
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 py-12">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-4">
+            <FaHome className="text-3xl" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">
+            Assisted Home Care
+          </h1>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            Book professional care either at home or as an online meeting. Choose a
+            service category, then select a specialist to schedule your session.
+          </p>
+        </div>
+
+        {/* Search & Filter */}
+        <div className="max-w-3xl mx-auto mb-12">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-grow">
+              <input
+                type="text"
+                placeholder="Search therapists..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-4 pl-12 pr-4 rounded-full border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none"
+              />
+              <svg
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <select
+              value={selectedService}
+              onChange={(e) => {
+                setSelectedService(e.target.value);
+                setSelectedSpecialty("All");
+              }}
+              className="p-4 rounded-full border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none appearance-none bg-white"
+            >
+              {HOME_CARE_SERVICES.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedSpecialty}
+              onChange={(e) => setSelectedSpecialty(e.target.value)}
+              className="p-4 rounded-full border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none appearance-none bg-white"
+            >
+              {specialties.map((specialty) => (
+                <option key={specialty} value={specialty}>
+                  {specialty}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Therapist Grid */}
+        {error ? (
+          <div className="text-center text-red-500">Error: {error}</div>
+        ) : (
+          <AnimatePresence>
+            {filteredTherapists.length > 0 ? (
+              <motion.div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {filteredTherapists.map((therapist) => (
+                  <motion.div
+                    key={therapist.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <TherapistCard
+                      therapist={therapist}
+                      onBookAppointment={() => handleBookHomeCare(therapist)}
+                      onViewDetails={() =>
+                        setProfileModal({ open: true, therapist })
+                      }
+                      bookAppointmentLabel="Book Appointment"
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                className="text-center py-12"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    vectorEffect="non-scaling-stroke"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                  />
+                </svg>
+                <h3 className="mt-2 text-xl font-medium text-gray-900">
+                  No therapists found
+                </h3>
+                <p className="mt-1 text-gray-500">
+                  Try adjusting your search or filter to find what you&apos;re
+                  looking for.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </div>
+
+      <TherapistProfileModal
+        isOpen={profileModal.open}
+        onClose={() => setProfileModal({ open: false, therapist: null })}
+        therapistId={profileModal.therapist?.id}
+        summary={profileModal.therapist}
+      />
+    </div>
+  );
+};
+
+export default HomeCareRehab;

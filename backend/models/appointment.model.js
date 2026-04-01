@@ -1,0 +1,135 @@
+import mongoose from "mongoose";
+
+const appointmentNotesSchema = new mongoose.Schema(
+  {
+    note: {
+      type: String,
+    },
+  },
+  { timestamps: true, _id: false }
+);
+
+const appointmentStatusHistorySchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      required: true,
+    },
+    fromStatus: {
+      type: String,
+      default: "",
+    },
+    changedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    source: {
+      type: String,
+      default: "system",
+    },
+    reason: {
+      type: String,
+      default: "",
+    },
+    changedBy: {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null,
+      },
+      userType: {
+        type: String,
+        default: "system",
+      },
+      name: {
+        type: String,
+        default: "",
+      },
+    },
+  },
+  { _id: false }
+);
+
+const appointmentSchema = new mongoose.Schema({
+  patient: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Patient",
+    required: true,
+  },
+  therapist: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Therapist",
+    required: true,
+  },
+  date: {
+    type: Date,
+    required: true,
+  },
+  time: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: [
+      "Pending",
+      "Accepted",
+      "Declined",
+      "Completed",
+      "Cancelled",
+      "Rescheduled",
+      "Waiting for Payment",
+    ],
+    default: "Waiting for Payment",
+  },
+  appointmentType: {
+    type: String,
+    enum: ["in-person", "online", "home-care"],
+    default: "in-person",
+  },
+  service: {
+    type: String,
+    required: true,
+  },
+  purpose: {
+    type: String,
+    required: true,
+    // maxlength: 1000,
+  },
+  notes: {
+    type: String,
+    default: "",
+  },
+  homeAddress: {
+    country: { type: String, default: "" },
+    city: { type: String, default: "" },
+    district: { type: String, default: "" },
+    street: { type: String, default: "" },
+  },
+  sessionNotes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SessionNote",
+    },
+  ],
+  statusHistory: {
+    type: [appointmentStatusHistorySchema],
+    default: [],
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+appointmentSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Appointment = mongoose.model("Appointment", appointmentSchema);
+
+export default Appointment;

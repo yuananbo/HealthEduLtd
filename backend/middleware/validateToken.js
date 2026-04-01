@@ -1,0 +1,75 @@
+import jwt from "jsonwebtoken";
+import Patient from "../models/patient.model.js";
+import Therapist from "../models/therapist.model.js";
+import Admin from "../models/admin.model.js";
+
+const validateToken = async (req, res, next) => {
+  try {
+    // Try cookie first, then fallback to Authorization header.
+    let token = req.cookies.jwt;
+
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      }
+    }
+
+    if (!token)
+      return res
+        .status(401)
+        .json({ message: "Unauthorized - no token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded)
+      return res.status(401).json({ message: "Unauthorized - invalid token" });
+
+    let user;
+    switch (decoded.userType) {
+      case "patient":
+        user = await Patient.findById(decoded.userId).select("-password");
+        break;
+      case "therapist":
+        user = await Therapist.findById(decoded.userId).select("-password");
+        break;
+      case "admin":
+        user = await Admin.findById(decoded.userId).select("-password");
+        break;
+      default:
+        return res
+          .status(401)
+          .json({ message: "Unauthorized - invalid token" });
+    }
+
+    if (!user) {
+      return res.status(401).json({
+        message:
+          "Session is invalid or this account no longer exists. Please log in again.",
+      });
+    }
+
+    // Token validity alone is not enough here. We also enforce live account
+    // status so deactivated users cannot keep using old JWTs.
+    if (decoded.userType === "patient" && user.isActive === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    if (decoded.userType === "therapist" && user.active === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    if (decoded.userType === "admin" && user.isActive === false) {
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    req.user = user;
+
+    next();
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export default validateToken;

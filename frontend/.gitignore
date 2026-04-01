@@ -8,15 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-coverage
 dist
 dist-ssr
+coverage
 *.local
-coverage/
-frontend/coverage/
-.vitest/
-
-.env
 
 # Editor directories and files
 .vscode/*
@@ -28,6 +23,4 @@ frontend/coverage/
 *.njsproj
 *.sln
 *.sw?
-
-# Local uploaded files generated during development
-backend/uploads/
+.vercel
