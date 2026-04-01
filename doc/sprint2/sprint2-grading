@@ -1,0 +1,70 @@
+# Sprint 2 Marking Scheme
+
+**Team Name:** 111 
+Amy Zhao
+Anbo Yuan
+Yixi Li
+Jiaqi Huang
+Ruoxin Lei
+---
+
+## Version Control (max 10 marks)
+
+- Consistent Usage of Git (5 pt):
+- Branches/Naming/Organization (5 pt)
+   - 2/2pts: Proper utilization of branches for feature development, bug fixes, etc. Should have feature branches for each user story that differs significantly in logic.
+   - 0/2 pts: Use of Pull Requests and/or avoidance of direct uploads and merging zip files.
+                 ● Similar to sprint 1, there should be PRs for each feature, that are reviewed by team members and merged periodically to the develop branch.
+   - 1/1 pts: Clear and meaningful branch naming conventions that reflect the purpose of the branch.
+
+Version Control Total Mark: 8/10
+---
+## Code Quality (max 8 marks)
+There is commented-out dead code and console logging, and error handling/style is not fully consistent across modules
+Code Quality Total Mark: 6 / 8
+---
+## UI Design and Ease of Use (8 marks):
+UI Design and Ease of Use Total Mark: 8 / 8
+
+---
+## BackLog Management (10 pts)
+      - (-1)  as some where done outside the sprint) All tasks/user stories in Sprint 1 should be completed.
+
+Backlog Management Total Mark: 9 / 10
+---
+## Project Tracking (max 10 marks)
+The burndown is not flat, so it does get some marks. But you explain that Jira/story-point tracking was late and did not reflect the true timing of work, which greatly weakens the burndown as a proper tracking tool. The late use does warrant some marks.
+Project Tracking Total Mark: 3 / 10
+---
+
+## Planning Meetings (RPM.md, sprint2.md) (max 10 marks)
+  - RPM.md (Release Planning Meetings) (max 5 marks)
+    
+Your Mark: 5
+    
+  - product.md (sprint2.md) (max 5 marks)
+	No changes
+
+Planning Meetings Total Mark: 10 / 10
+
+---
+## Design Pattern Implementation (10 marks)
+Design Pattern Implementation: 10/10
+---
+
+## Team Communication (max 11 marks)
+Daily Stand-ups Total Mark: 4 / 6
+Please make sure to send individual updates on each standup day! I can’t actually confirm if you did the standups if its all submitted on one day by one person.
+Sprint Retro Total Mark: 5 / 5
+
+Team Communication Mark: 9 / 11
+
+---
+## Sprint Demo (Max 17 marks) 
+
+Your Mark: 17 / 17
+
+---
+
+## Total Mark
+80 / 94
