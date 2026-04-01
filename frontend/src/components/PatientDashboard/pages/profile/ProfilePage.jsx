@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUser, FaNotesMedical, FaLock } from "react-icons/fa";
 import PersonalInfoTab from "./PersonalInfoTab";
@@ -7,19 +7,28 @@ import SecurityTab from "./SecurityTab";
 import api from "../../../../utils/api";
 import Loading from "../../../utilities/Loading";
 import toast from "react-hot-toast";
+import { UserContext } from "../../../../context/UserContext";
 
 const PatientProfilePage = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const { currentUser, setCurrentUser } = useContext(UserContext);
 
   const reloadPatient = async () => {
     try {
       setLoading(true);
       setLoadError("");
       const response = await api.get("/patient/profile");
-      setPatient(response.data);
+      const nextPatient = response.data;
+      setPatient(nextPatient);
+      if (currentUser?.data?.user?._id && nextPatient?._id) {
+        setCurrentUser({
+          ...currentUser,
+          data: { ...(currentUser.data || {}), user: nextPatient },
+        });
+      }
     } catch (err) {
       console.error("Error fetching patient profile:", err);
       const message =

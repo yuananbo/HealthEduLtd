@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import moment from "moment";
 import { Link } from "react-router-dom";
 import api from "../../../../utils/api";
 import toast from "react-hot-toast";
 import AvailabilityDayPicker from "../../../common/widgets/AvailabilityDayPicker";
+import {
+  formatAvailabilityDateLabel,
+  localCalendarDateToYmd,
+} from "../../../../utils/availabilityDate";
 
 const CreateAvailability = () => {
   const [availabilityName, setAvailabilityName] = useState("");
@@ -15,9 +18,9 @@ const CreateAvailability = () => {
       toast.error("You can only select up to 7 dates");
       return;
     }
-    if (!dates.find((d) => moment(d.date).isSame(date, "day"))) {
-      setDates([...dates, { date, times: [] }]);
-    }
+    const ymd = localCalendarDateToYmd(date);
+    if (!ymd || dates.some((d) => d.date === ymd)) return;
+    setDates([...dates, { date: ymd, times: [] }]);
   };
 
   const addTimeSlot = (dateIndex) => {
@@ -109,7 +112,7 @@ const CreateAvailability = () => {
           <div key={dateIndex} className="bg-white rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-700">
-                {moment(date.date).format("MMMM Do, YYYY")}
+                {formatAvailabilityDateLabel(date.date)}
               </h2>
               <button
                 type="button"

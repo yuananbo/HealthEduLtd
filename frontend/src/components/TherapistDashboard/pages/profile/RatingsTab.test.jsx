@@ -46,4 +46,28 @@ describe("RatingsTab", () => {
     expect(screen.getByText("Very helpful and kind.")).toBeTruthy();
     expect(screen.getByText("No written comment provided.")).toBeTruthy();
   });
+
+  it("shows Anonymous patient and hides patient ID for anonymous reviews", () => {
+    render(
+      <RatingsTab
+        averageRating={5}
+        therapist={{
+          ratings: [
+            {
+              _id: "anon-1",
+              rating: 5,
+              review: "Great care.",
+              isAnonymous: true,
+              patient: null,
+              createdAt: "2026-03-22T00:00:00.000Z",
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByText("Anonymous patient")).toBeTruthy();
+    expect(screen.getByText(/Anonymous submission/)).toBeTruthy();
+    expect(screen.queryByText(/Patient ID:/)).toBeNull();
+  });
 });

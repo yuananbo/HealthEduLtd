@@ -10,8 +10,11 @@ const formatReviewDate = (value) => {
 };
 
 const getReviewerName = (review) => {
-  const firstName = review?.patient?.firstName || "";
-  const lastName = review?.patient?.lastName || "";
+  if (review?.isAnonymous || !review?.patient) {
+    return "Anonymous patient";
+  }
+  const firstName = review.patient.firstName || "";
+  const lastName = review.patient.lastName || "";
   const fullName = `${firstName} ${lastName}`.trim();
   return fullName || "Anonymous patient";
 };
@@ -134,7 +137,9 @@ const RatingsTab = ({ therapist, averageRating = 0 }) => {
                   {getReviewerName(review)}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {review?.patient?.patientId
+                  {review?.isAnonymous || !review?.patient
+                    ? "Anonymous submission — name hidden"
+                    : review.patient.patientId
                     ? `Patient ID: ${review.patient.patientId}`
                     : "Patient ID unavailable"}
                 </p>

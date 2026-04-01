@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import moment from "moment";
+import {
+  coerceApiDateToYmd,
+  formatAvailabilityDateLabel,
+} from "../../../../utils/availabilityDate";
 import {
   AiOutlineEllipsis,
   AiOutlineEdit,
@@ -10,7 +13,8 @@ import { useAvailability } from "../../../../hooks/useAvailability";
 import toast from "react-hot-toast";
 
 const AvailabilityCard = ({ availability, onUpdate, onEdit }) => {
-  const { id, name, dates, isActive } = availability;
+  const { id, name, isActive } = availability;
+  const dates = Array.isArray(availability?.dates) ? availability.dates : [];
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const {
@@ -80,25 +84,31 @@ const AvailabilityCard = ({ availability, onUpdate, onEdit }) => {
           >
             <p className="text-gray-600">
               <span className="font-semibold">Date:</span>{" "}
-              {moment(dateAvailability.date).format("MMMM Do, YYYY")}
+              {formatAvailabilityDateLabel(dateAvailability.date)}
             </p>
             <div>
               <span className="font-semibold text-gray-700">Times:</span>
               <ul className="mt-2 space-y-1">
-                {dateAvailability.times.map((time, timeIndex) => (
+                {(dateAvailability.times || []).map((time, timeIndex) => {
+                  const slotTime =
+                    typeof time === "string" ? time : time?.time ?? "";
+                  const slotActive =
+                    typeof time === "string" ? true : Boolean(time?.isActive);
+                  return (
                   <li key={timeIndex} className="flex items-center gap-2 mb-2">
                     <span
                       className={`rounded px-3 py-1 inline-block ${
-                        time.isActive
+                        slotActive
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-600 line-through"
                       }`}
                     >
-                      {time.time}
+                      {slotTime}
                     </span>
                     <button
+                      type="button"
                       className={`text-xs px-2 py-1 rounded ${
-                        time.isActive
+                        slotActive
                           ? "bg-red-100 text-red-700 hover:bg-red-200"
                           : "bg-green-100 text-green-700 hover:bg-green-200"
                       }`}
@@ -106,22 +116,23 @@ const AvailabilityCard = ({ availability, onUpdate, onEdit }) => {
                         try {
                           await toggleTimeSlotStatus(
                             id,
-                            dateAvailability.date,
-                            time.time,
-                            !time.isActive
+                            coerceApiDateToYmd(dateAvailability.date),
+                            slotTime,
+                            !slotActive
                           );
                           toast.success(
-                            `Time slot ${!time.isActive ? "activated" : "deactivated"}`
+                            `Time slot ${!slotActive ? "activated" : "deactivated"}`
                           );
                         } catch (slotError) {
                           toast.error(slotError.message || "Failed to update time slot");
                         }
                       }}
                     >
-                      {time.isActive ? "Deactivate" : "Activate"}
+                      {slotActive ? "Deactivate" : "Activate"}
                     </button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           </div>

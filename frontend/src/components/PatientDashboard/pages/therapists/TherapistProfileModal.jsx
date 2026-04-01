@@ -164,10 +164,11 @@ const TherapistProfileModal = ({ isOpen, onClose, therapistId, summary }) => {
                   <ul className="space-y-3">
                     {reviews.map((r) => {
                       const patient = r.patient;
-                      const who = patient
-                        ? `${patient.firstName || ""} ${patient.lastName || ""}`.trim() ||
-                          "Patient"
-                        : "Patient";
+                      const who =
+                        r.isAnonymous || !patient
+                          ? "Anonymous patient"
+                          : `${patient.firstName || ""} ${patient.lastName || ""}`.trim() ||
+                            "Patient";
                       return (
                         <li
                           key={r._id}
