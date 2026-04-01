@@ -203,11 +203,56 @@ describe("Patient appointment details", () => {
         appointmentId: "appointment-1",
         rating: 5,
         review: "Excellent therapist",
+        isAnonymous: false,
       });
     });
 
     expect(toast.success).toHaveBeenCalledWith("Thank you for your feedback");
     expect(await screen.findByText("Excellent therapist")).toBeTruthy();
+  });
+
+  it("submits an anonymous rating when the checkbox is checked", async () => {
+    useAppointmentDetailsPatient.mockReturnValue({
+      loading: false,
+      error: null,
+      appointment: {
+        data: { ...baseAppointment, status: "Completed" },
+      },
+    });
+    api.get.mockResolvedValue({ data: { therapist: { ratings: [] } } });
+    api.post.mockResolvedValue({
+      data: {
+        rating: {
+          rating: 4,
+          review: "Good session",
+          isAnonymous: true,
+          createdAt: "2026-03-22T00:00:00.000Z",
+        },
+      },
+    });
+
+    renderPage();
+
+    const stars = await screen.findAllByLabelText("Select rating star");
+    fireEvent.click(stars[3]);
+    fireEvent.change(screen.getByLabelText("Review (optional)"), {
+      target: { value: "Good session" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /submit anonymously/i,
+      })
+    );
+    fireEvent.click(screen.getByText("Submit Review"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/rating/therapist-1", {
+        appointmentId: "appointment-1",
+        rating: 4,
+        review: "Good session",
+        isAnonymous: true,
+      });
+    });
   });
 
   it("shows an existing review instead of the form when the patient already rated the therapist", async () => {
@@ -240,6 +285,38 @@ describe("Patient appointment details", () => {
       await screen.findByText("You submitted a rating without a written review.")
     ).toBeTruthy();
     expect(screen.queryByText("Submit Review")).toBeNull();
+  });
+
+  it("shows anonymous notice when the existing review was submitted anonymously", async () => {
+    useAppointmentDetailsPatient.mockReturnValue({
+      loading: false,
+      error: null,
+      appointment: {
+        data: { ...baseAppointment, status: "Completed" },
+      },
+    });
+    api.get.mockResolvedValue({
+      data: {
+        therapist: {
+          ratings: [
+            {
+              patient: null,
+              isAnonymous: true,
+              appointment: { _id: "appointment-1" },
+              rating: 5,
+              review: "Thanks",
+              createdAt: "2026-03-22T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/submitted this rating anonymously/i)
+    ).toBeTruthy();
   });
 
   it("shows payment call-to-action when the appointment is waiting for payment", () => {
