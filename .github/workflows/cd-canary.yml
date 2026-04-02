@@ -47,6 +47,16 @@ jobs:
                 context: ./frontend
                 dockerfile: Dockerfile
           EOF
+      - name: Debug package versions before docker build
+        run: |
+          echo "=== ROOT package.json ==="
+          grep -n '"typescript"' package.json || true
+          echo "=== ROOT package-lock.json ==="
+          grep -n '"typescript"' package-lock.json | head -n 20 || true
+          echo "=== FRONTEND package.json ==="
+          grep -n '"esbuild"\|"typescript"\|"autoprefixer"' frontend/package.json || true
+          echo "=== FRONTEND package-lock.json ==="
+          grep -n '"esbuild"\|"typescript"\|"autoprefixer"' frontend/package-lock.json | head -n 40 || true
 
       - name: Docker compose build
         env:
