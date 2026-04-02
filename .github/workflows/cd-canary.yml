@@ -45,7 +45,7 @@ jobs:
               image: ${DOCKERHUB_USERNAME}/healtheduld-frontend:${GIT_SHA}
               build:
                 context: ./frontend
-                dockerfile: ./frontend/Dockerfile
+                dockerfile: Dockerfile
           EOF
 
       - name: Docker compose build
