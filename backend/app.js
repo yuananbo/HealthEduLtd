@@ -40,10 +40,18 @@ const __dirname = path.resolve();
 // Serve uploaded files (local storage)
 app.use("/uploads", express.static(path.join(__dirname, "backend", "uploads")));
 
+// CORS: allow Azure frontend domain via env, with local dev fallback
+const allowedOrigin =
+  process.env.FRONTEND_ORIGIN && process.env.FRONTEND_ORIGIN.trim().length > 0
+    ? process.env.FRONTEND_ORIGIN
+    : "http://localhost:5173";
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigin,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204,
   })
 );
 
