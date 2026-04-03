@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findByIdMock = vi.fn();
 const populateMock = vi.fn();
 const findByIdAndUpdateMock = vi.fn();
+const findOneRatingMock = vi.fn();
+const findByIdAppointmentMock = vi.fn();
 const saveMock = vi.fn();
 const TherapistRatingMock = vi.fn();
 
@@ -13,8 +15,16 @@ vi.mock("../models/therapist.model.js", () => ({
   },
 }));
 
+vi.mock("../models/appointment.model.js", () => ({
+  default: {
+    findById: findByIdAppointmentMock,
+  },
+}));
+
 vi.mock("../models/therapistRating.model.js", () => ({
-  default: TherapistRatingMock,
+  default: Object.assign(TherapistRatingMock, {
+    findOne: findOneRatingMock,
+  }),
 }));
 
 describe("CommonService", () => {
@@ -24,6 +34,8 @@ describe("CommonService", () => {
     populateMock.mockReset();
     findByIdMock.mockReset();
     findByIdAndUpdateMock.mockReset();
+    findOneRatingMock.mockReset();
+    findByIdAppointmentMock.mockReset();
     saveMock.mockReset();
     TherapistRatingMock.mockReset();
     TherapistRatingMock.mockImplementation(function MockTherapistRating(data) {
@@ -50,8 +62,19 @@ describe("CommonService", () => {
   });
 
   it("getTherapistRatings populates ratings and nested patient info", async () => {
-    const therapist = { _id: "therapist-1", ratings: [{ rating: 5 }] };
-    populateMock.mockResolvedValue(therapist);
+    const plain = {
+      _id: "therapist-1",
+      ratings: [
+        {
+          rating: 5,
+          isAnonymous: false,
+          patient: { firstName: "A", lastName: "B", patientId: "P1" },
+        },
+      ],
+    };
+    populateMock.mockResolvedValue({
+      toObject: () => plain,
+    });
     findByIdMock.mockReturnValue({
       populate: populateMock,
     });
@@ -62,12 +85,43 @@ describe("CommonService", () => {
     expect(findByIdMock).toHaveBeenCalledWith("therapist-1");
     expect(populateMock).toHaveBeenCalledWith({
       path: "ratings",
-      populate: {
-        path: "patient",
-        select: "firstName lastName patientId",
-      },
+      populate: [
+        {
+          path: "patient",
+          select: "firstName lastName patientId",
+        },
+        {
+          path: "appointment",
+          select: "_id status date service",
+        },
+      ],
     });
-    expect(result).toEqual(therapist);
+    expect(result).toEqual(plain);
+  });
+
+  it("getTherapistRatings strips patient details for anonymous ratings", async () => {
+    const plain = {
+      _id: "therapist-1",
+      ratings: [
+        {
+          rating: 4,
+          isAnonymous: true,
+          patient: { firstName: "Secret", lastName: "User", patientId: "PX" },
+        },
+      ],
+    };
+    populateMock.mockResolvedValue({
+      toObject: () => plain,
+    });
+    findByIdMock.mockReturnValue({
+      populate: populateMock,
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+    const result = await CommonService.getTherapistRatings("therapist-1");
+
+    expect(result.ratings[0].patient).toBeNull();
+    expect(result.ratings[0].isAnonymous).toBe(true);
   });
 
   it("getTherapistRatings throws when the therapist does not exist", async () => {
@@ -84,20 +138,32 @@ describe("CommonService", () => {
   });
 
   it("addTherapistRating saves the rating and links it to the therapist", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue(null);
+
     const { default: CommonService } = await import("./common.service.js");
 
     const created = await CommonService.addTherapistRating(
       "patient-1",
       "therapist-1",
+      "appointment-1",
       5,
       "Excellent care"
     );
 
     expect(TherapistRatingMock).toHaveBeenCalledWith({
+      appointment: "appointment-1",
       patient: "patient-1",
       therapist: "therapist-1",
       rating: 5,
       review: "Excellent care",
+      isAnonymous: false,
     });
     expect(saveMock).toHaveBeenCalled();
     expect(findByIdAndUpdateMock).toHaveBeenCalledWith(
@@ -107,10 +173,68 @@ describe("CommonService", () => {
     );
     expect(created).toMatchObject({
       _id: "rating-1",
+      appointment: "appointment-1",
       patient: "patient-1",
       therapist: "therapist-1",
       rating: 5,
       review: "Excellent care",
+    });
+  });
+
+  it("addTherapistRating rejects duplicate ratings for the same appointment", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue({ _id: "rating-existing" });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-1",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "This appointment has already been rated",
+      statusCode: 409,
+    });
+  });
+
+  it("addTherapistRating stores isAnonymous when true", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+    findOneRatingMock.mockResolvedValue(null);
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await CommonService.addTherapistRating(
+      "patient-1",
+      "therapist-1",
+      "appointment-1",
+      5,
+      "Great",
+      true
+    );
+
+    expect(TherapistRatingMock).toHaveBeenCalledWith({
+      appointment: "appointment-1",
+      patient: "patient-1",
+      therapist: "therapist-1",
+      rating: 5,
+      review: "Great",
+      isAnonymous: true,
     });
   });
 });

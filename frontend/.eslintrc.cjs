@@ -12,11 +12,15 @@ module.exports = {
   settings: { react: { version: "18.2" } },
   plugins: ["react-refresh"],
   rules: {
-    "react/jsx-no-target-blank": "off",
-    "react/prop-types": "off",
-    "no-unused-vars": [
-      "error",
-      { varsIgnorePattern: "^React$", argsIgnorePattern: "^_" },
+    'react/jsx-no-target-blank': 'off',
+    'react/prop-types': 'off',
+    'no-unused-vars': [
+      'error',
+      { varsIgnorePattern: '^React$', argsIgnorePattern: '^_' },
+    ],
+    'react-refresh/only-export-components': [
+      'warn',
+      { allowConstantExport: true },
     ],
     "react-hooks/exhaustive-deps": "off",
     "react-refresh/only-export-components": "off",
@@ -25,27 +29,22 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["**/*.{test,spec}.{js,jsx}", "**/tests/**/*.{js,jsx}"],
+      files: ['**/*.{test,spec}.{js,jsx}', '**/tests/**/*.{js,jsx}'],
       globals: {
-        describe: "readonly",
-        it: "readonly",
-        test: "readonly",
-        expect: "readonly",
-        vi: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-        beforeAll: "readonly",
-        afterAll: "readonly",
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
       },
     },
     {
-      files: [
-        "vite.config.js",
-        "vitest.config.js",
-        "tailwind.config.js",
-        "postcss.config.js",
-      ],
+      files: ['vite.config.js', 'vitest.config.js', 'tailwind.config.js', 'postcss.config.js'],
       env: { node: true },
     },
   ],
-};
+}

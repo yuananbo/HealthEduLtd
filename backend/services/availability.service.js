@@ -19,6 +19,26 @@ import moment from "moment";
 import Availability from "../models/availability.model.js";
 
 class AvailabilityService {
+  /**
+   * Calendar-day availability (no timezone drift). Prefer client "YYYY-MM-DD".
+   */
+  static normalizeAvailabilityDayInput(value) {
+    if (value === undefined || value === null) {
+      throw new Error("Availability date is required");
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const m = moment.utc(s, "YYYY-MM-DD", true);
+        if (!m.isValid()) throw new Error("Invalid availability date");
+        return m.startOf("day").toDate();
+      }
+    }
+    const legacy = moment.utc(value);
+    if (!legacy.isValid()) throw new Error("Invalid availability date");
+    return legacy.startOf("day").toDate();
+  }
+
   static async createAvailability(therapistId, dates, availabilityName) {
     const existingAvailabilityName = await Availability.findOne({
       availabilityName: availabilityName,
@@ -31,7 +51,7 @@ class AvailabilityService {
     const availability = new Availability({
       therapist: therapistId,
       availabilities: dates.map((date) => ({
-        date: moment.utc(date.date).startOf("day").toDate(),
+        date: this.normalizeAvailabilityDayInput(date.date),
         times: date.times.map((time) => ({ time, isActive: true })),
       })),
       availabilityName: availabilityName,
@@ -256,10 +276,9 @@ class AvailabilityService {
         },
       },
       {
-        $set: {
-          isActive: true,
-          "availabilities.$[d].times.$[t].isActive": true,
-        },
+        // Only release the slot itself; do not touch the schedule-level isActive
+        // flag so that a therapist's intentional deactivation is not overridden.
+        $set: { "availabilities.$[d].times.$[t].isActive": true },
       },
       {
         arrayFilters: [
@@ -296,7 +315,7 @@ class AvailabilityService {
 
       if (dates) {
         availability.availabilities = dates.map((date) => ({
-          date: moment.utc(date.date).startOf("day").toDate(),
+          date: this.normalizeAvailabilityDayInput(date.date),
           times: date.times.map((time) => ({
             time: time.time,
             isActive: time.isActive,
@@ -345,11 +364,9 @@ class AvailabilityService {
 
     timeEntry.isActive = Boolean(isActive);
 
-    // Keep parent availability visibility in sync with slot-level availability.
-    const hasAnyActiveSlot = (availability.availabilities || []).some((d) =>
-      (d.times || []).some((slot) => Boolean(slot.isActive))
-    );
-    availability.isActive = hasAnyActiveSlot;
+    // Schedule-level isActive (patient visibility) is managed independently via
+    // setAvailabilityActive / setAvailabilityInactive and is not derived from
+    // slot states, so we do not touch it here.
 
     await availability.save();
 
@@ -367,16 +384,9 @@ class AvailabilityService {
       throw new Error("Availability not found or not authorized");
     }
 
+    // Only toggle the schedule-level visibility flag.
+    // Individual slot states (reserved vs. available) are preserved.
     updatedAvailability.isActive = true;
-    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
-      (dateEntry) => ({
-        ...dateEntry.toObject(),
-        times: (dateEntry.times || []).map((slot) => ({
-          ...slot.toObject(),
-          isActive: true,
-        })),
-      })
-    );
 
     await updatedAvailability.save();
 
@@ -394,16 +404,9 @@ class AvailabilityService {
       throw new Error("Availability not found or not authorized");
     }
 
+    // Only toggle the schedule-level visibility flag.
+    // Individual slot states (reserved vs. available) are preserved.
     updatedAvailability.isActive = false;
-    updatedAvailability.availabilities = (updatedAvailability.availabilities || []).map(
-      (dateEntry) => ({
-        ...dateEntry.toObject(),
-        times: (dateEntry.times || []).map((slot) => ({
-          ...slot.toObject(),
-          isActive: false,
-        })),
-      })
-    );
 
     await updatedAvailability.save();
 

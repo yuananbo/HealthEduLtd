@@ -84,12 +84,20 @@ const SignupForm = ({ API_ENDPOINT }) => {
       toast.error("Passwords do not match");
       return;
     }
+    if (String(inputs.password).length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (!inputs.address?.city?.trim()) {
+      toast.error("Please select your region/city (required)");
+      return;
+    }
     setLoading(true);
     try {
       const response = await registerPatient();
       if (response) {
         toast.success("Patient registered successfully. Please login.");
-        navigate("patient/login", { replace: true });
+        navigate("/patient/login", { replace: true });
         console.log("New user", response);
       }
     } catch (error) {

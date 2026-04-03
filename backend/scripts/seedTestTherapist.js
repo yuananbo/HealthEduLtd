@@ -39,7 +39,7 @@ const TEST_THERAPIST = {
 const TEST_THERAPIST_2 = {
   firstName: "Lao",
   lastName: "Zhongyi",
-  email: "laozhongyi@gmail.com",
+  email: "Iamork@gmail.com",
   phoneNumber: "+250788123456",
   gender: "Male",
   address: {
@@ -49,11 +49,11 @@ const TEST_THERAPIST_2 = {
     street: "Nyabugogo",
   },
   profession: "Physiotherapy",
-  bio: "I am a physiotherapist with 5 years of experience. I specialize in physiotherapy and rehabilitation.",
+  bio: "Waaaaaaagh!!!!",
   numOfYearsOfExperience: "5",
-  specialization: "Medical Doctor",
+  specialization: "Counsellor",
   licenseNumber: "123456",
-  password: "Test123!",
+  password: "Test123456!",
   isVerified: true,
   active: true,
 };
@@ -64,7 +64,7 @@ const seedTestTherapist = async () => {
     await mongoose.connect(process.env.DBCONNECTION);
     console.log("Connected.\n");
 
-    const existing = await Therapist.findOne({ email: TEST_THERAPIST_2.email });
+    const existing = await Therapist.findOne({ email: TEST_THERAPIST.email });
     if (existing) {
       console.log("Test therapist already exists. Updating to verified...");
       existing.isVerified = true;
@@ -72,7 +72,7 @@ const seedTestTherapist = async () => {
       await existing.save();
       console.log("Updated:", existing.email, "| isVerified:", existing.isVerified);
     } else {
-      const therapist = new Therapist(TEST_THERAPIST_2);
+      const therapist = new Therapist(TEST_THERAPIST);
       await therapist.save();
       console.log("Created test therapist:");
       console.log("  Email:", therapist.email);

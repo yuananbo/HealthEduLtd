@@ -42,7 +42,12 @@ const validateToken = async (req, res, next) => {
           .json({ message: "Unauthorized - invalid token" });
     }
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(401).json({
+        message:
+          "Session is invalid or this account no longer exists. Please log in again.",
+      });
+    }
 
     // Token validity alone is not enough here. We also enforce live account
     // status so deactivated users cannot keep using old JWTs.

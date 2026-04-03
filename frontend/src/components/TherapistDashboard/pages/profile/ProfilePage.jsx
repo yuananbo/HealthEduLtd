@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PersonalTab from "./PersonalTab";
 import ProfessionalTab from "./ProfessionalTab";
@@ -6,7 +6,6 @@ import SecurityTab from "./SecurityTab";
 import RatingsTab from "./RatingsTab";
 import { initialTherapistData } from "./therapistData";
 import ProfileSidebar from "./ProfileSidebar";
-import { UserContext } from "../../../../context/UserContext";
 import Loading from "../../../utilities/Loading";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
@@ -15,9 +14,7 @@ import useDataFetching from "../../../../hooks/useFech";
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [isLoading, setIsLoading] = useState(false);
-  const { currentUser } = useContext(UserContext);
-
-  const [loading, , therapistData, refetchTherapistData] =
+  const [loading, error, therapistData, refetchTherapistData] =
     useDataFetching("/therapist/profile");
 
   useEffect(() => {
@@ -86,9 +83,55 @@ const ProfilePage = () => {
   const updateTherapistInfo = async () => {
     try {
       setIsLoading(true);
-      console.log("Form data being sent:", formData);
 
-      // Only send changed fields
+      const applySuccessResponse = async (response) => {
+        if (response.data && response.data.therapist) {
+          toast.success("Profile updated successfully");
+          setFormData((prevData) => ({
+            ...prevData,
+            ...response.data.therapist,
+            address: {
+              ...prevData.address,
+              ...(response.data.therapist.address || {}),
+            },
+            profilePicture:
+              response.data.therapist.profilePicture ?? prevData.profilePicture,
+          }));
+          await refetchTherapistData();
+        } else {
+          throw new Error("Unexpected response format");
+        }
+      };
+
+      if (formData.profilePicture instanceof File) {
+        const fd = new FormData();
+        const textFields = [
+          "firstName",
+          "lastName",
+          "phoneNumber",
+          "alternativePhoneNumber",
+          "gender",
+          "profession",
+          "bio",
+          "numOfYearsOfExperience",
+          "specialization",
+        ];
+        textFields.forEach((key) => {
+          const v = formData[key];
+          if (v !== undefined && v !== null) {
+            fd.append(key, String(v));
+          }
+        });
+        fd.append("address", JSON.stringify(formData.address || {}));
+        fd.append("profilePicture", formData.profilePicture);
+
+        const response = await api.patch("/therapist/profile", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        await applySuccessResponse(response);
+        return;
+      }
+
       const changedData = Object.keys(formData).reduce((acc, key) => {
         if (formData[key] !== initialTherapistData[key]) {
           acc[key] = formData[key];
@@ -96,32 +139,8 @@ const ProfilePage = () => {
         return acc;
       }, {});
 
-      // console.log("Changed data being sent:", changedData);
-
-      const response = await api.patch("/therapist/profile", changedData, {
-        headers: {
-          Authorization: `Bearer ${currentUser.token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log("Server response:", response.data);
-
-      if (response.data && response.data.therapist) {
-        toast.success("Profile updated successfully");
-        setFormData((prevData) => ({
-          ...prevData,
-          ...response.data.therapist,
-          address: {
-            ...prevData.address,
-            ...response.data.therapist.address,
-          },
-        }));
-        await refetchTherapistData();
-        console.log("Data after refetch:", therapistData);
-      } else {
-        throw new Error("Unexpected response format");
-      }
+      const response = await api.patch("/therapist/profile", changedData);
+      await applySuccessResponse(response);
     } catch (error) {
       console.error(
         "Error updating profile:",

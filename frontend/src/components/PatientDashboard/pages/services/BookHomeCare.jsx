@@ -9,6 +9,7 @@ import AvailableTimeSlots from "../../../common/widgets/TimeSlots";
 import { UserContext } from "../../../../context/UserContext";
 import Input from "../../../common/forms/Input";
 import TherapistCard from "../../../features/cards/SmallCard";
+import TherapistProfileModal from "../therapists/TherapistProfileModal";
 import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
@@ -45,6 +46,7 @@ const BookHomeCare = () => {
     district: "",
     street: "",
   });
+  const [therapistModalOpen, setTherapistModalOpen] = useState(false);
 
   const [loading, , data, refetchAvailability] = useDataFetching(
     therapist?.id ? `/therapist/availability/${therapist.id}` : null
@@ -290,7 +292,10 @@ const BookHomeCare = () => {
             Choose whether you want a home visit or an online meeting.
           </p>
         </div>
-        <TherapistCard therapist={therapist} />
+        <TherapistCard
+          therapist={therapist}
+          onViewDetails={() => setTherapistModalOpen(true)}
+        />
       </div>
 
       {formattedData && formattedData.availabilities && (
@@ -491,6 +496,13 @@ const BookHomeCare = () => {
           </div>
         </form>
       )}
+
+      <TherapistProfileModal
+        isOpen={therapistModalOpen}
+        onClose={() => setTherapistModalOpen(false)}
+        therapistId={therapist?.id}
+        summary={therapist}
+      />
     </div>
   );
 };

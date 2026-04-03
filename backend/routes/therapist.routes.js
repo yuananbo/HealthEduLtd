@@ -11,6 +11,7 @@ import {
 } from "../controllers/therapist/therapist.controller.js";
 import fs from "fs";
 import multer from "multer";
+import path from "path";
 import {
   addAppointmentNotes,
   deleteAppointment,
@@ -48,6 +49,23 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+const profileUploadsDir = path.join(process.cwd(), "backend", "uploads");
+if (!fs.existsSync(profileUploadsDir)) {
+  fs.mkdirSync(profileUploadsDir, { recursive: true });
+}
+
+const profilePictureStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, profileUploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || "");
+    cb(null, "therapist-profile-" + Date.now() + ext);
+  },
+});
+
+const uploadProfilePicture = multer({ storage: profilePictureStorage });
 
 //ROUTES
 const router = express.Router();
@@ -104,6 +122,9 @@ router.route("/my-statistics").get(getTherapistStatistics);
 router
   .route("/profile")
   .get(getTherapistProfileWithRatings)
-  .patch(updateTherapistProfile);
+  .patch(
+    uploadProfilePicture.fields([{ name: "profilePicture", maxCount: 1 }]),
+    updateTherapistProfile
+  );
 
 export default router;

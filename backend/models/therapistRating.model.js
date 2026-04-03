@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const therapistRatingSchema = new mongoose.Schema(
   {
+    appointment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Appointment",
+      required: true,
+      unique: true,
+    },
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Patient",
@@ -22,9 +28,16 @@ const therapistRatingSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
+
+therapistRatingSchema.index({ therapist: 1, appointment: 1 });
+therapistRatingSchema.index({ patient: 1, appointment: 1 });
 
 const TherapistRating = mongoose.model("TherapistRating", therapistRatingSchema);
 

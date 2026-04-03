@@ -1,43 +1,74 @@
 import React from "react";
+import { FaStar } from "react-icons/fa";
 
-const TherapistCard = ({ therapist }) => {
+const avatarFallback = (name) => {
+  const q = encodeURIComponent(name || "Therapist");
+  return `https://ui-avatars.com/api/?name=${q}&size=160&background=0ea5e9&color=fff`;
+};
+
+const formatSpecialties = (s) =>
+  Array.isArray(s) ? s.join(", ") : s || "";
+
+const TherapistCard = ({ therapist, onViewDetails }) => {
+  const avg = Number(therapist?.averageRating) || 0;
+  const nReviews = Number(therapist?.reviewCount) || 0;
+  const stars = Math.min(5, Math.round(avg));
+  const spec = formatSpecialties(therapist?.specialties);
+
   return (
-    <div className="bg-white rounded-lg p-6 hover:shadow-md transition-shadow duration-300">
-      <div className="flex items-center mb-4">
+    <div
+      className={`bg-white rounded-lg p-6 hover:shadow-md transition-shadow duration-300 ${
+        onViewDetails ? "cursor-pointer" : ""
+      }`}
+      onClick={onViewDetails}
+      role={onViewDetails ? "button" : undefined}
+      onKeyDown={
+        onViewDetails
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onViewDetails();
+              }
+            }
+          : undefined
+      }
+      tabIndex={onViewDetails ? 0 : undefined}
+    >
+      <div className="flex items-center mb-3">
         <img
-          src={therapist.profilePicture || "https://via.placeholder.com/80"}
-          alt={therapist.fullName}
-          className="w-20 h-20 rounded-full object-cover mr-4 border-2 border-indigo-200"
+          src={
+            therapist?.profilePicture || avatarFallback(therapist?.fullName)
+          }
+          alt={therapist?.fullName}
+          className="w-20 h-20 rounded-full object-cover mr-4 border-2 border-indigo-200 shrink-0"
+          onError={(e) => {
+            e.target.src = avatarFallback(therapist?.fullName);
+          }}
         />
-        <div>
-          <h3 className="text-xl font-bold text-gray-800 mb-1">
-            {therapist.fullName}
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xl font-bold text-gray-800 mb-1 leading-tight">
+            {therapist?.fullName}
           </h3>
-          <p className="text-sm text-indigo-600 font-medium mb-2">
-            {therapist.specialties}
-          </p>
-          {/* <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <svg
+          <p className="text-sm text-indigo-600 font-medium mb-2">{spec}</p>
+          <div className="flex flex-wrap items-center gap-0.5 text-amber-500">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <FaStar
                 key={i}
-                className={`w-5 h-5 ${
-                  i < Math.floor(therapist.rating)
-                    ? "text-yellow-400"
-                    : "text-gray-300"
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
+                className={`w-4 h-4 ${i <= stars ? "opacity-100" : "opacity-20"}`}
+              />
             ))}
-            <span className="ml-2 text-sm text-gray-600 font-medium">
-              {therapist.rating.toFixed(1)} ({therapist.reviewCount} reviews)
+            <span className="text-xs text-gray-600 font-medium ml-1">
+              {avg.toFixed(1)}
+              {nReviews > 0 ? ` · ${nReviews} review${nReviews === 1 ? "" : "s"}` : ""}
             </span>
-          </div> */}
+          </div>
         </div>
       </div>
-      {/* <p className="text-gray-600 text-sm">{therapist.bio}</p> */}
+      {onViewDetails && (
+        <p className="text-xs text-sky-600 font-medium">
+          Tap to view introduction & all reviews
+        </p>
+      )}
     </div>
   );
 };
