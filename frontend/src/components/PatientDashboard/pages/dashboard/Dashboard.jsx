@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HealthTip from "./HealthTip";
 import ChooseServiceCards from "./ChooseServiceCards";
-import { healthTips, mockPatient } from "./mockData";
+import { healthTips } from "./mockData";
 import PatientProfile from "./PatientProfile";
 import UpcomingAppointments from "./UpcomingAppointments";
 import AppointmentHistory from "./AppointmentHistory";

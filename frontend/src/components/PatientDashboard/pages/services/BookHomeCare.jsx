@@ -48,7 +48,7 @@ const BookHomeCare = () => {
   });
   const [therapistModalOpen, setTherapistModalOpen] = useState(false);
 
-  const [loading, error, data, refetchAvailability] = useDataFetching(
+  const [loading, , data, refetchAvailability] = useDataFetching(
     therapist?.id ? `/therapist/availability/${therapist.id}` : null
   );
 

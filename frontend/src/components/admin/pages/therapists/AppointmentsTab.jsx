@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-const AppointmentsTab = ({ therapistId }) => {
+const AppointmentsTab = ({ therapistId: _therapistId }) => {
   // Fetch appointments data here
 
   return (

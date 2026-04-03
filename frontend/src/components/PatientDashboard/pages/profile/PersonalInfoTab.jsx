@@ -21,7 +21,7 @@ import CustomDropdown from "../../../common/forms/CustomDropdown";
 import CustomCountryDropdown from "../../../common/forms/CustomCountryDropdown";
 
 const PersonalInfoTab = ({ patient, setPatient, reloadPatient }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [onUpdate, setOnUpdate] = useState(false);
 
@@ -89,7 +89,7 @@ const PersonalInfoTab = ({ patient, setPatient, reloadPatient }) => {
         formData.append("profilePicture", patient.profilePicture);
       }
 
-      const response = await api.patch("/patient/profile", formData, {
+      await api.patch("/patient/profile", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

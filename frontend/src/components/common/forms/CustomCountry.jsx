@@ -9,8 +9,8 @@ const CustomCountry = ({
   handleChange,
   labelText,
   labelFor,
-  id,
-  name,
+  id: _id,
+  name: _name,
   placeholder,
   customClass,
 }) => {

@@ -112,14 +112,6 @@ const TherapistDetails = () => {
   if (!therapist) {
     return <div>No therapist data found</div>;
   }
-  const tabs = [
-    { id: "profile", label: "Profile", icon: "user" },
-    { id: "appointments", label: "Appointments", icon: "calendar" },
-    { id: "income", label: "Income", icon: "chart-bar" },
-    { id: "payments", label: "Payments", icon: "credit-card" },
-    { id: "withdrawals", label: "Withdrawal Requests", icon: "cash" },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex">

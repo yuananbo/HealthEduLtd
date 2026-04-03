@@ -15,7 +15,6 @@ import Loading from "../components/utilities/Loading";
 import ForgotPassword from "../components/PatientDashboard/pages/ForgotPassword";
 import ResetPassword from "../components/PatientDashboard/pages/ResetPassword";
 import AccountStatus from "../components/TherapistDashboard/pages/AccountStatus";
-import WelcomePage from "../pages/WelcomePage";
 import AdminDashboard from "../components/admin/AdminDashboard";
 import AdminLogin from "../components/admin/auth/AdminLogin";
 

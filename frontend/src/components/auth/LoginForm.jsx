@@ -14,7 +14,7 @@ fields.forEach((field) => (fieldsState[field.id] = ""));
 
 export default function LoginForm({ API_ENDPOINT, place }) {
   const [loginState, setLoginState] = useState(fieldsState);
-  const { currentUser, setCurrentUser } = useContext(UserContext);
+  const { setCurrentUser } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 

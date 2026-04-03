@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import NotFound from "../../pages/NotFound";
 import TherapistDashboardLayout from "./layout/TherapistDashboardLayout";
 import ProfilePage from "./pages/profile/ProfilePage";
 import SuccessPage from "../auth/therapist/signup/SuccessPage";
-import { UserContext } from "../../context/UserContext";
 import Availabilities from "./pages/availability/Availabilities";
 import CreateAvailability from "./pages/availability/CreateAvailability";
 import EditAvailability from "./pages/availability/EditAvailability";
@@ -17,13 +16,11 @@ import Loading from "../utilities/Loading";
 import AccountStatus from "./pages/AccountStatus";
 
 const TherapistDashboard = () => {
-  const { currentUser } = React.useContext(UserContext);
-  const [data, setData] = React.useState(null);
+  const [, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [isActive, setIsActive] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
-  const location = useLocation();
 
   useEffect(() => {
     fetchData();

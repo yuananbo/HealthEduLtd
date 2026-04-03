@@ -67,7 +67,10 @@ test("updateAppointmentStatus rejects completing a non-accepted appointment", as
       }),
     (error) => {
       assert.equal(error.status, 400);
-      assert.match(error.message, /Only accepted appointments/);
+      assert.match(
+        error.message,
+        /Cannot transition appointment from "Pending" to "Completed"/
+      );
       return true;
     }
   );

@@ -1,0 +1,9 @@
+.git
+.github
+node_modules
+frontend/node_modules
+coverage
+frontend/coverage
+npm-debug.log
+README.md
+.DS_Store

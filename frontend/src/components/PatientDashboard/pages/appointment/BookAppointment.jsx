@@ -28,7 +28,7 @@ const BookAppointment = () => {
     purpose: "",
     notes: "",
   });
-  const [loading, error, data, refetchAvailability] = useDataFetching(
+  const [loading, , data, refetchAvailability] = useDataFetching(
     `/therapist/availability/${therapist.id}`
   );
 

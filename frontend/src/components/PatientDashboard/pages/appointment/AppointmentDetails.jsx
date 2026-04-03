@@ -50,13 +50,10 @@ const AppointmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useContext(UserContext);
-  const {
-    appointment,
-    loading: appointmentLoading,
-    error: appointmentError,
-  } = useAppointmentDetailsPatient(id);
+  const { appointment, loading: appointmentLoading } =
+    useAppointmentDetailsPatient(id);
 
-  const { loading, error, therapist } = useTherapistDetails(
+  const { loading, therapist } = useTherapistDetails(
     appointment?.data?.therapist
   );
 
@@ -128,11 +125,6 @@ const AppointmentDetails = () => {
         "Failed to cancel appointment";
       toast.error(message);
     }
-  };
-
-  const handleReschedule = () => {
-    // Implement reschedule logic
-    console.log("Reschedule appointment");
   };
 
   const handleSaveNotes = () => {
