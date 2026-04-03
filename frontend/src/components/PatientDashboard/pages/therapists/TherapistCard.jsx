@@ -9,7 +9,7 @@ const avatarFallback = (name) => {
 
 const TherapistCard = ({
   therapist,
-  onViewProfile,
+  onViewProfile: _onViewProfile,
   onViewDetails,
   onBookAppointment,
   viewProfileLabel: _viewProfileLabel = "View Profile",
