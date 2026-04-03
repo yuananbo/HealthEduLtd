@@ -14,7 +14,7 @@ import useDataFetching from "../../../../hooks/useFech";
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [isLoading, setIsLoading] = useState(false);
-  const [loading, error, therapistData, refetchTherapistData] =
+  const [loading, therapistData, refetchTherapistData] =
     useDataFetching("/therapist/profile");
 
   useEffect(() => {
