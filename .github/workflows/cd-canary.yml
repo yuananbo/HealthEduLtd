@@ -3,7 +3,7 @@ name: CD — Build with docker-compose and push to Docker Hub
 on:
   push:
     branches:
-      - feature/cd-canary-deploy
+      #- feature/cd-canary-deploy
       - main
   workflow_dispatch:
 
