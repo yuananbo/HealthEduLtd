@@ -11,6 +11,9 @@ import {
   updateAdminUserStatus,
 } from "../../controllers/admin/admin.controller.js";
 
+const VALID_THERAPIST_ID = "507f1f77bcf86cd799439012";
+const VALID_ADMIN_ID = "507f1f77bcf86cd799439013";
+
 const originalPatientFind = Patient.find;
 const originalPatientFindById = Patient.findById;
 const originalPatientFindByIdAndUpdate = Patient.findByIdAndUpdate;
@@ -77,7 +80,7 @@ test("getAdminUsers returns filtered paginated user rows", async () => {
   ]);
   Therapist.find = () => withSelectLean([
     {
-      _id: "therapist-1",
+      _id: VALID_THERAPIST_ID,
       firstName: "Jamie",
       lastName: "Chen",
       email: "jamie@example.com",
@@ -107,7 +110,7 @@ test("getAdminUsers returns filtered paginated user rows", async () => {
 
 test("getAdminUserById returns therapist detail payload when userType hint is supplied", async () => {
   Therapist.findById = () => withSelectLean({
-    _id: "therapist-1",
+    _id: VALID_THERAPIST_ID,
     firstName: "Jamie",
     lastName: "Chen",
     email: "jamie@example.com",
@@ -128,7 +131,7 @@ test("getAdminUserById returns therapist detail payload when userType hint is su
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "therapist-1" },
+    params: { id: VALID_THERAPIST_ID },
     query: { userType: "therapist" },
   };
   const res = createResponse();
@@ -146,8 +149,8 @@ test("getAdminUserById returns therapist detail payload when userType hint is su
 
 test("updateAdminUserStatus blocks deactivating your own admin account", async () => {
   const req = {
-    user: { _id: "admin-1", role: "admin", userType: "admin" },
-    params: { id: "admin-1" },
+    user: { _id: VALID_ADMIN_ID, role: "admin", userType: "admin" },
+    params: { id: VALID_ADMIN_ID },
     body: { userType: "admin", status: "inactive" },
   };
   const res = createResponse();
@@ -160,19 +163,19 @@ test("updateAdminUserStatus blocks deactivating your own admin account", async (
 
 test("updateAdminUserStatus routes therapist activation through admin service", async () => {
   AdminService.approveTherapistAccount = async () => ({
-    therapist: { _id: "therapist-1", active: true, isVerified: true },
+    therapist: { _id: VALID_THERAPIST_ID, active: true, isVerified: true },
   });
   Therapist.findById = () => ({
     select: async () => ({
-      _id: "therapist-1",
+      _id: VALID_THERAPIST_ID,
       active: true,
       isVerified: false,
     }),
   });
 
   const req = {
-    user: { _id: "admin-1", role: "admin", userType: "admin" },
-    params: { id: "therapist-1" },
+    user: { _id: VALID_ADMIN_ID, role: "admin", userType: "admin" },
+    params: { id: VALID_THERAPIST_ID },
     body: { userType: "therapist", status: "active" },
   };
   const res = createResponse();
@@ -182,4 +185,18 @@ test("updateAdminUserStatus routes therapist activation through admin service", 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.data.userType, "therapist");
   assert.equal(res.body.data.status, "active");
+});
+
+test("getAdminUserById rejects invalid user ids", async () => {
+  const req = {
+    user: { role: "admin", userType: "admin" },
+    params: { id: "therapist-1" },
+    query: { userType: "therapist" },
+  };
+  const res = createResponse();
+
+  await getAdminUserById(req, res, () => {});
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.message, "Invalid user id");
 });

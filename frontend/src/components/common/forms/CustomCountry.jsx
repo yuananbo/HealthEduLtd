@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CountryDropdown } from "react-country-state-dropdown";
+import { CountryDropdown } from "react-country-region-selector";
 
 const fixedInputClass =
   "rounded-md appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-greenPrimary focus:border-greenPrimary focus:z-10 sm:text-sm";
@@ -16,7 +16,7 @@ const CustomCountry = ({
 }) => {
   const [country, setCountry] = useState(value);
 
-  const handleCountryChange = (e, selectedCountry) => {
+  const handleCountryChange = (selectedCountry) => {
     setCountry(selectedCountry);
     handleChange(selectedCountry);
   };

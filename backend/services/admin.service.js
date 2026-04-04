@@ -18,6 +18,14 @@ class AdminService {
     "Waiting for Payment",
   ];
 
+  static ensureValidObjectId(value, label = "resource") {
+    if (!mongoose.isValidObjectId(value)) {
+      const error = new Error(`Invalid ${label} id`);
+      error.status = 400;
+      throw error;
+    }
+  }
+
   static async createSuperAdmin(email, password, res) {
     try {
       const existingSuperAdmin = await Admin.findOne({ role: "super-admin" });
@@ -286,6 +294,8 @@ class AdminService {
   // get Therapist details from their ID by either super-admin or admin
   static async getTherapistDetails(adminId, therapistId) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
+      AdminService.ensureValidObjectId(therapistId, "therapist");
       const admin = await Admin.findById(adminId);
       if (!admin) {
         throw new Error("Admin not found");
@@ -319,6 +329,8 @@ class AdminService {
   // get a therapist statistics
   static async getTherapistStatistics(adminId, therapistId) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
+      AdminService.ensureValidObjectId(therapistId, "therapist");
       const admin = await Admin.findById(adminId);
       if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
         throw new Error(
@@ -481,6 +493,8 @@ class AdminService {
   // get therapist appointment
   static async getTherapistAppointments(adminId, therapistId, page, limit) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
+      AdminService.ensureValidObjectId(therapistId, "therapist");
       const admin = await Admin.findById(adminId);
       if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
         throw new Error(
@@ -595,6 +609,7 @@ class AdminService {
 
   static async getAdminBookings(adminId, query = {}) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
       const admin = await Admin.findById(adminId);
       if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
         throw new Error(
@@ -613,11 +628,17 @@ class AdminService {
       const pageNum = Math.max(1, parseInt(page, 10) || 1);
       const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
       const skip = (pageNum - 1) * limitNum;
-      const normalizedSearch = search.trim();
+      const normalizedSearch =
+        typeof search === "string" ? search.trim().slice(0, 100) : "";
+      const normalizedStatus =
+        status === "all" || AdminService.BOOKING_STATUS_OPTIONS.includes(status)
+          ? status
+          : "all";
+      const normalizedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
       const filters = {};
-      if (status !== "all") {
-        filters.status = status;
+      if (normalizedStatus !== "all") {
+        filters.status = normalizedStatus;
       }
 
       const searchRegex = normalizedSearch
@@ -683,9 +704,9 @@ class AdminService {
             bookings: [
               {
                 $sort: {
-                  date: sortOrder === "asc" ? 1 : -1,
-                  time: sortOrder === "asc" ? 1 : -1,
-                  createdAt: sortOrder === "asc" ? 1 : -1,
+                  date: normalizedSortOrder === "asc" ? 1 : -1,
+                  time: normalizedSortOrder === "asc" ? 1 : -1,
+                  createdAt: normalizedSortOrder === "asc" ? 1 : -1,
                 },
               },
               { $skip: skip },
@@ -763,9 +784,9 @@ class AdminService {
       return {
         bookings: result?.bookings || [],
         filters: {
-          search,
-          status,
-          sortOrder,
+          search: normalizedSearch,
+          status: normalizedStatus,
+          sortOrder: normalizedSortOrder,
         },
         stats: {
           total,
@@ -786,6 +807,8 @@ class AdminService {
 
   static async getAdminBookingById(adminId, bookingId) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
+      AdminService.ensureValidObjectId(bookingId, "booking");
       const admin = await Admin.findById(adminId);
       if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
         throw new Error(
@@ -836,6 +859,8 @@ class AdminService {
 
   static async updateAdminBookingStatus(adminId, bookingId, status, req) {
     try {
+      AdminService.ensureValidObjectId(adminId, "admin");
+      AdminService.ensureValidObjectId(bookingId, "booking");
       const admin = await Admin.findById(adminId);
       if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
         throw new Error(

@@ -1,4 +1,5 @@
 import fs from "fs";
+import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -12,6 +13,57 @@ import Appointment from "../../models/appointment.model.js";
 import Payment from "../../models/payment.model.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONTENT_TOPICS = new Set([
+  "ncd-management",
+  "exercises",
+  "nutrition",
+  "disability-prevention",
+  "child-disability-detection",
+]);
+const CONTENT_TYPES = new Set(["article", "video"]);
+const CONTENT_STATUSES = new Set(["all", "published", "draft", "unpublished"]);
+const ADMIN_USER_TYPES = new Set([
+  "all",
+  "patient",
+  "therapist",
+  "admin",
+  "super-admin",
+]);
+const ADMIN_DETAIL_USER_TYPES = new Set([
+  "patient",
+  "therapist",
+  "admin",
+  "super-admin",
+]);
+const ADMIN_STATUSES = new Set(["all", "active", "inactive", "pending"]);
+const ADMIN_SORT_FIELDS = new Set(["createdAt", "name", "email"]);
+const SORT_DIRECTIONS = new Set(["asc", "desc"]);
+
+const normalizeString = (value, { trim = true, maxLength } = {}) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = trim ? value.trim() : value;
+  return maxLength ? normalized.slice(0, maxLength) : normalized;
+};
+
+const getAllowedValue = (value, allowedValues, fallback) => {
+  const normalized = normalizeString(value);
+  return allowedValues.has(normalized) ? normalized : fallback;
+};
+
+const escapeRegex = (value) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const validateMongoIdParam = (res, value, resourceName = "resource") => {
+  if (mongoose.isValidObjectId(value)) {
+    return true;
+  }
+
+  res.status(400).json({ message: `Invalid ${resourceName} id` });
+  return false;
+};
 
 const ensureAdminAccess = (admin) =>
   admin.role === "super-admin" ||
@@ -19,14 +71,14 @@ const ensureAdminAccess = (admin) =>
   admin.userType === "admin";
 
 const buildContentPayload = (body) => ({
-  topic: body.topic,
-  type: body.type,
-  title: body.title?.trim(),
-  summary: body.summary?.trim(),
-  duration: body.duration?.trim(),
-  body: body.body?.trim(),
-  sourceName: body.sourceName?.trim(),
-  sourceUrl: body.sourceUrl?.trim(),
+  topic: normalizeString(body.topic),
+  type: normalizeString(body.type),
+  title: normalizeString(body.title),
+  summary: normalizeString(body.summary),
+  duration: normalizeString(body.duration),
+  body: normalizeString(body.body),
+  sourceName: normalizeString(body.sourceName),
+  sourceUrl: normalizeString(body.sourceUrl),
   isPublished:
     typeof body.isPublished === "boolean" ? body.isPublished : undefined,
   order:
@@ -52,6 +104,14 @@ const validateContentPayload = (payload, { partial = false } = {}) => {
     if (missingField) {
       return `${missingField} is required`;
     }
+  }
+
+  if (payload.topic && !CONTENT_TOPICS.has(payload.topic)) {
+    return "topic is invalid";
+  }
+
+  if (payload.type && !CONTENT_TYPES.has(payload.type)) {
+    return "type is invalid";
   }
 
   if (payload.order !== undefined && Number.isNaN(payload.order)) {
@@ -184,13 +244,21 @@ export const getAdminContents = asyncHandler(async (req, res) => {
   }
 
   const {
-    search = "",
-    topic = "all",
-    type = "all",
-    status = "all",
+    search: rawSearch = "",
+    topic: rawTopic = "all",
+    type: rawType = "all",
+    status: rawStatus = "all",
     page = 1,
     limit = 10,
   } = req.query;
+  const search = normalizeString(rawSearch, { maxLength: 100 });
+  const topic = getAllowedValue(
+    rawTopic,
+    new Set(["all", ...CONTENT_TOPICS]),
+    "all"
+  );
+  const type = getAllowedValue(rawType, new Set(["all", ...CONTENT_TYPES]), "all");
+  const status = getAllowedValue(rawStatus, CONTENT_STATUSES, "all");
 
   const query = {};
 
@@ -208,11 +276,12 @@ export const getAdminContents = asyncHandler(async (req, res) => {
     query.isPublished = false;
   }
 
-  if (search.trim()) {
+  if (search) {
+    const safeSearch = escapeRegex(search);
     query.$or = [
-      { title: { $regex: search.trim(), $options: "i" } },
-      { summary: { $regex: search.trim(), $options: "i" } },
-      { sourceName: { $regex: search.trim(), $options: "i" } },
+      { title: { $regex: safeSearch, $options: "i" } },
+      { summary: { $regex: safeSearch, $options: "i" } },
+      { sourceName: { $regex: safeSearch, $options: "i" } },
     ];
   }
 
@@ -258,6 +327,9 @@ export const getAdminContentById = asyncHandler(async (req, res) => {
   }
 
   const { id } = req.params;
+  if (!validateMongoIdParam(res, id, "content")) {
+    return;
+  }
 
   const content = await EducationContent.findById(id)
     .select("-__v")
@@ -284,6 +356,9 @@ export const updateAdminContentStatus = asyncHandler(async (req, res) => {
 
   const { id } = req.params;
   const { isPublished } = req.body;
+  if (!validateMongoIdParam(res, id, "content")) {
+    return;
+  }
 
   if (typeof isPublished !== "boolean") {
     return res.status(400).json({
@@ -352,6 +427,9 @@ export const updateAdminContent = asyncHandler(async (req, res) => {
   }
 
   const { id } = req.params;
+  if (!validateMongoIdParam(res, id, "content")) {
+    return;
+  }
   const payload = buildContentPayload(req.body);
   const validationError = validateContentPayload(payload, { partial: false });
 
@@ -407,6 +485,10 @@ export const getTherapistById = asyncHandler(async (req, res) => {
         message:
           "Unauthorized: You do not have permission to access this resource",
       });
+    }
+
+    if (!validateMongoIdParam(res, therapistId, "therapist")) {
+      return;
     }
 
     const therapist = await AdminService.getTherapistDetails(
@@ -466,14 +548,19 @@ export const getAdminUsers = asyncHandler(async (req, res) => {
   }
 
   const {
-    search = "",
-    userType = "all",
-    status = "all",
-    sortBy = "createdAt",
-    sortOrder = "desc",
+    search: rawSearch = "",
+    userType: rawUserType = "all",
+    status: rawStatus = "all",
+    sortBy: rawSortBy = "createdAt",
+    sortOrder: rawSortOrder = "desc",
     page = 1,
     limit = 10,
   } = req.query;
+  const search = normalizeString(rawSearch, { maxLength: 100 });
+  const userType = getAllowedValue(rawUserType, ADMIN_USER_TYPES, "all");
+  const status = getAllowedValue(rawStatus, ADMIN_STATUSES, "all");
+  const sortBy = getAllowedValue(rawSortBy, ADMIN_SORT_FIELDS, "createdAt");
+  const sortOrder = getAllowedValue(rawSortOrder, SORT_DIRECTIONS, "desc");
 
   const [patients, therapists, admins] = await Promise.all([
     Patient.find({})
@@ -503,7 +590,7 @@ export const getAdminUsers = asyncHandler(async (req, res) => {
     ...admins.map((item) => AdminUserFactory.createListRow(item, "admin")),
   ];
 
-  const normalizedSearch = search.trim().toLowerCase();
+  const normalizedSearch = search.toLowerCase();
   const filteredUsers = normalizedUsers.filter((item) => {
     const matchesSearch =
       !normalizedSearch ||
@@ -562,11 +649,20 @@ export const getAdminUserById = asyncHandler(async (req, res) => {
   }
 
   const { id } = req.params;
-  const requestedUserType = req.query.userType;
 
   if (!id) {
     return res.status(400).json({ message: "User id is required" });
   }
+
+  if (!validateMongoIdParam(res, id, "user")) {
+    return;
+  }
+
+  const requestedUserType = getAllowedValue(
+    req.query.userType,
+    ADMIN_DETAIL_USER_TYPES,
+    ""
+  );
 
   const getPatientPayload = async () => {
     const patient = await Patient.findById(id)
@@ -652,7 +748,12 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
   }
 
   const { id } = req.params;
-  const { status, userType } = req.body;
+  if (!validateMongoIdParam(res, id, "user")) {
+    return;
+  }
+
+  const status = normalizeString(req.body.status);
+  const userType = normalizeString(req.body.userType);
   const allowedStatuses = ["active", "inactive", "pending"];
 
   if (!status || !allowedStatuses.includes(status)) {
@@ -777,7 +878,17 @@ export const getAdminBookings = asyncHandler(async (req, res) => {
     });
   }
 
-  const result = await AdminService.getAdminBookings(admin._id, req.query);
+  const result = await AdminService.getAdminBookings(admin._id, {
+    search: normalizeString(req.query.search, { maxLength: 100 }),
+    status: getAllowedValue(
+      req.query.status,
+      new Set(["all", ...AdminService.BOOKING_STATUS_OPTIONS]),
+      "all"
+    ),
+    page: req.query.page,
+    limit: req.query.limit,
+    sortOrder: getAllowedValue(req.query.sortOrder, SORT_DIRECTIONS, "desc"),
+  });
 
   res.status(200).json({
     success: true,
@@ -795,6 +906,10 @@ export const getAdminBookingById = asyncHandler(async (req, res) => {
     return res.status(403).json({
       message: "Unauthorized: You do not have permission to access this resource",
     });
+  }
+
+  if (!validateMongoIdParam(res, req.params.id, "booking")) {
+    return;
   }
 
   const booking = await AdminService.getAdminBookingById(
@@ -816,7 +931,11 @@ export const updateAdminBookingStatus = asyncHandler(async (req, res) => {
     });
   }
 
-  const { status } = req.body;
+  if (!validateMongoIdParam(res, req.params.id, "booking")) {
+    return;
+  }
+
+  const status = normalizeString(req.body.status);
   if (!status) {
     return res.status(400).json({ message: "status is required" });
   }
@@ -851,6 +970,10 @@ export const approveTherapist = asyncHandler(async (req, res) => {
 
     if (!therapistId) {
       throw new Error("TherapistId is required");
+    }
+
+    if (!mongoose.isValidObjectId(therapistId)) {
+      throw new Error("Invalid therapist id");
     }
 
     const updatedTherapist = await AdminService.approveTherapistAccount(
@@ -894,6 +1017,10 @@ export const disapproveTherapist = asyncHandler(async (req, res) => {
       throw new Error("TherapistId is required");
     }
 
+    if (!mongoose.isValidObjectId(therapistId)) {
+      throw new Error("Invalid therapist id");
+    }
+
     const updatedTherapist = await AdminService.deactivateTherapistAccount(
       adminId,
       therapistId
@@ -927,6 +1054,10 @@ export const getTherapistStats = asyncHandler(async (req, res) => {
     const adminId = req.user._id;
     const therapistId = req.params.id;
 
+    if (!mongoose.isValidObjectId(therapistId)) {
+      throw new Error("Invalid therapist id");
+    }
+
     const stats = await AdminService.getTherapistStatistics(
       adminId,
       therapistId
@@ -949,6 +1080,13 @@ export const getTherapistAppointments = asyncHandler(async (req, res) => {
   try {
     const { therapistId } = req.params;
     let { page, limit } = req.query;
+
+    if (!mongoose.isValidObjectId(therapistId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid therapist id",
+      });
+    }
 
     // Ensure page and limit are valid numbers
     page = Math.max(1, parseInt(page) || 1);
