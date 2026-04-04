@@ -1,0 +1,221 @@
+name: CD Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI — Lint & unit tests"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-ci-success:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    outputs:
+      docker-image-tag: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check CI workflow success
+        run: echo "CI workflow completed successfully"
+
+  deploy-canary:
+    needs: check-ci-success
+    runs-on: ubuntu-latest
+    environment: canary
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Deploy backend to canary (c01mobirehab)
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourceUrl: ${{ github.server_url }}/${{ github.repository }}
+          acrName: docker.io
+          acrUsername: ${{ secrets.DOCKERHUB_USERNAME }}
+          acrPassword: ${{ secrets.DOCKERHUB_TOKEN }}
+          containerAppName: c01mobirehab
+          resourceGroup: Mobirehab_group
+          imageToDeploy: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:${{ needs.check-ci-success.outputs.docker-image-tag }}
+          runtimeStack: node
+
+      - name: Wait for canary to start
+        run: sleep 120
+
+      - name: Health check - Backend
+        run: |
+          echo "Running health check on canary backend..."
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://c01mobirehab.azurewebsites.net/api/health || echo "000")
+            
+            if [ "$RESPONSE" = "200" ]; then
+              echo "✅ Health check passed! Backend is healthy."
+              exit 0
+            fi
+            
+            echo "⏳ Health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES - Response: $RESPONSE"
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            sleep 10
+          done
+          
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Performance check - Backend
+        run: |
+          echo "Running performance check..."
+          START=$(date +%s%N)
+          curl -s https://c01mobirehab.azurewebsites.net/api/health > /dev/null
+          END=$(date +%s%N)
+          
+          DURATION=$((($END - $START) / 1000000))
+          echo "Response time: ${DURATION}ms"
+          
+          if [ $DURATION -gt 5000 ]; then
+            echo "⚠️ Warning: Response time is slow (${DURATION}ms > 5000ms)"
+          else
+            echo "✅ Response time is good (${DURATION}ms)"
+          fi
+
+  deploy-frontend-canary:
+    needs: [check-ci-success, deploy-canary]
+    runs-on: ubuntu-latest
+    environment: canary
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Deploy frontend to canary
+        run: |
+          echo "Deploying frontend to canary environment..."
+          az containerapp update \
+            --name c01mobirehab \
+            --resource-group Mobirehab_group \
+            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:${{ needs.check-ci-success.outputs.docker-image-tag }}
+
+      - name: Wait for canary frontend to start
+        run: sleep 60
+
+      - name: Health check - Frontend
+        run: |
+          echo "Running health check on canary frontend..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://c01mobirehab.azurewebsites.net/ || echo "000")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Frontend health check passed!"
+            exit 0
+          else
+            echo "❌ Frontend health check failed with response: $RESPONSE"
+            exit 1
+          fi
+
+  promote-to-production:
+    needs: [check-ci-success, deploy-canary, deploy-frontend-canary]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Promote canary to production - Backend
+        run: |
+          echo "Promoting canary backend to production (Mobirehab)..."
+          az containerapp update \
+            --name Mobirehab \
+            --resource-group Mobirehab_group \
+            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:${{ needs.check-ci-success.outputs.docker-image-tag }}
+
+      - name: Promote canary to production - Frontend
+        run: |
+          echo "Promoting canary frontend to production (Mobirehab)..."
+          az containerapp update \
+            --name Mobirehab \
+            --resource-group Mobirehab_group \
+            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:${{ needs.check-ci-success.outputs.docker-image-tag }}
+
+      - name: Verify production deployment
+        run: |
+          echo "Verifying production deployment..."
+          sleep 30
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://Mobirehab.azurewebsites.net/api/health || echo "000")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Production deployment verified successfully!"
+            exit 0
+          else
+            echo "❌ Production verification failed with response: $RESPONSE"
+            exit 1
+          fi
+
+  rollback-on-failure:
+    if: failure()
+    needs: [promote-to-production]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Rollback production to previous version
+        run: |
+          echo "❌ Deployment failed! Rolling back production..."
+          echo "Note: Manual rollback may be required depending on your Azure setup"
+          echo "Check Azure Container Apps revision history for previous versions"
+
+      - name: Notify failure
+        run: |
+          echo "🚨 CD Pipeline failed!"
+          echo "Canary deployment or health checks failed"
+          echo "Please check the logs above for details"
+          exit 1
