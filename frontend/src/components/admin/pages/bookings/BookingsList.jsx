@@ -66,6 +66,8 @@ const ACTIVE_QUEUE_CARD_STYLES = {
   home_care_missing_address: "border-red-300 bg-red-50",
 };
 
+const BOOKING_PANEL_STORAGE_KEY = "admin-booking-panel-state";
+
 const BookingsList = () => {
   const { currentUser } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
@@ -89,6 +91,18 @@ const BookingsList = () => {
     sortOrder: "desc",
     page: 1,
     limit: 10,
+  });
+  const [panels, setPanels] = useState(() => {
+    if (typeof window === "undefined") {
+      return { status: true, queue: true };
+    }
+
+    try {
+      const saved = window.localStorage.getItem(BOOKING_PANEL_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : { status: true, queue: true };
+    } catch {
+      return { status: true, queue: true };
+    }
   });
 
   const fetchBookings = useCallback(async () => {
@@ -130,6 +144,17 @@ const BookingsList = () => {
     fetchBookings();
   }, [fetchBookings]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      BOOKING_PANEL_STORAGE_KEY,
+      JSON.stringify(panels)
+    );
+  }, [panels]);
+
   const handleFilterChange = (key, value) => {
     setFilters((previous) => ({
       ...previous,
@@ -137,6 +162,17 @@ const BookingsList = () => {
       page: key === "page" ? value : 1,
     }));
   };
+
+  const togglePanel = (key) => {
+    setPanels((previous) => ({
+      ...previous,
+      [key]: !previous[key],
+    }));
+  };
+
+  const activeQueueLabel =
+    QUEUE_OPTIONS.find((option) => option.value === filters.queue)?.label ||
+    "All queues";
 
   if (loading) {
     return <Loading />;
@@ -223,47 +259,70 @@ const BookingsList = () => {
               Click a status block to filter the table.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => handleFilterChange("status", "all")}
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              filters.status === "all"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            All bookings
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <div className="grid min-w-[980px] grid-cols-7 gap-3">
-            {STATUS_OPTIONS.filter((option) => option !== "all").map((label) => {
-              const isActive = filters.status === label;
-              const count = stats.statusCounts?.[label] || 0;
-
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => handleFilterChange("status", label)}
-                  className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
-                    isActive
-                      ? ACTIVE_STATUS_CARD_STYLES[label] ||
-                        "border-slate-300 bg-slate-50"
-                      : "border-gray-200 bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  <p className="text-xs uppercase tracking-wide text-gray-500">
-                    {label}
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-gray-800">
-                    {count}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleFilterChange("status", "all")}
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                filters.status === "all"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              All bookings
+            </button>
+            <button
+              type="button"
+              onClick={() => togglePanel("status")}
+              className="rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              {panels.status ? "Collapse" : "Expand"}
+            </button>
           </div>
         </div>
+        {panels.status ? (
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[980px] grid-cols-7 gap-3">
+              {STATUS_OPTIONS.filter((option) => option !== "all").map(
+                (label) => {
+                  const isActive = filters.status === label;
+                  const count = stats.statusCounts?.[label] || 0;
+
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => handleFilterChange("status", label)}
+                      className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
+                        isActive
+                          ? ACTIVE_STATUS_CARD_STYLES[label] ||
+                            "border-slate-300 bg-slate-50"
+                          : "border-gray-200 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        {label}
+                      </p>
+                      <p className="mt-2 text-2xl font-bold text-gray-800">
+                        {count}
+                      </p>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+            Status filter:{" "}
+            <span className="font-medium text-gray-800">
+              {filters.status === "all" ? "All bookings" : filters.status}
+            </span>
+            {filters.status !== "all"
+              ? ` • ${stats.statusCounts?.[filters.status] || 0} matching bookings in the current queue scope`
+              : ""}
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg bg-white p-4 shadow-sm">
@@ -274,49 +333,68 @@ const BookingsList = () => {
               Click a queue block to filter admin follow-up cases.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => handleFilterChange("queue", "all")}
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              filters.queue === "all"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            All queues
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <div className="grid min-w-[980px] grid-cols-4 gap-3">
-            {QUEUE_OPTIONS.filter((option) => option.value !== "all").map(
-              (option) => {
-                const isActive = filters.queue === option.value;
-                const count = stats.queueCounts?.[option.value] || 0;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleFilterChange("queue", option.value)}
-                    className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
-                      isActive
-                        ? ACTIVE_QUEUE_CARD_STYLES[option.value] ||
-                          "border-slate-300 bg-slate-50"
-                        : "border-gray-200 bg-white hover:bg-gray-50"
-                    }`}
-                  >
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
-                      {option.label}
-                    </p>
-                    <p className="mt-2 text-2xl font-bold text-gray-800">
-                      {count}
-                    </p>
-                  </button>
-                );
-              }
-            )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleFilterChange("queue", "all")}
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                filters.queue === "all"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              All queues
+            </button>
+            <button
+              type="button"
+              onClick={() => togglePanel("queue")}
+              className="rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              {panels.queue ? "Collapse" : "Expand"}
+            </button>
           </div>
         </div>
+        {panels.queue ? (
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[980px] grid-cols-4 gap-3">
+              {QUEUE_OPTIONS.filter((option) => option.value !== "all").map(
+                (option) => {
+                  const isActive = filters.queue === option.value;
+                  const count = stats.queueCounts?.[option.value] || 0;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleFilterChange("queue", option.value)}
+                      className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
+                        isActive
+                          ? ACTIVE_QUEUE_CARD_STYLES[option.value] ||
+                            "border-slate-300 bg-slate-50"
+                          : "border-gray-200 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        {option.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-bold text-gray-800">
+                        {count}
+                      </p>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+            Queue filter:{" "}
+            <span className="font-medium text-gray-800">{activeQueueLabel}</span>
+            {filters.queue !== "all"
+              ? ` • ${stats.queueCounts?.[filters.queue] || 0} matching bookings in the current status scope`
+              : ""}
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
