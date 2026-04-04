@@ -6,7 +6,6 @@ import axios from "axios";
 import { adminBaseURL } from "../../../../utils/adminApi";
 
 const PerformanceMetrics = ({ therapistId }) => {
-  // Mock data (replace with actual data fetching logic)
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useContext(UserContext);
@@ -42,23 +41,22 @@ const PerformanceMetrics = ({ therapistId }) => {
   };
 
   useEffect(() => {
-    if (currentUser && currentUser.token) {
+    if (currentUser?.token) {
       getTherapistStats();
     }
-  }, [currentUser.token]);
+  }, [currentUser?.token]);
 
   if (loading) {
     return <Loading />;
   }
 
-  console.log(therapist);
-
   const metrics = {
-    totalAppointments: therapist?.totalAppointments,
-    totalIncome: therapist?.paymentInfo[0]?.totalAmount,
-    currency: therapist?.paymentInfo[0]?.currency,
-    averageRating: therapist?.averageRating,
-    completionRate: therapist?.completionRate,
+    totalAppointments: therapist?.totalAppointments || 0,
+    totalIncome: therapist?.paymentInfo?.[0]?.totalAmount || 0,
+    currency: therapist?.paymentInfo?.[0]?.currency || "",
+    averageRating: therapist?.averageRating || 0,
+    ratingCount: therapist?.ratingCount || 0,
+    completionRate: therapist?.completionRate || 0,
   };
 
   const containerVariants = {
@@ -86,13 +84,13 @@ const PerformanceMetrics = ({ therapistId }) => {
       />
       <MetricCard
         title="Total Income"
-        value={`${metrics.currency}${metrics.totalIncome.toFixed(2)}`}
+        value={`${metrics.currency} ${metrics.totalIncome.toFixed(2)}`.trim()}
         icon="fa-dollar-sign"
         color="bg-green-500"
       />
       <MetricCard
         title="Average Rating"
-        value={metrics.averageRating.toFixed(1)}
+        value={`${metrics.averageRating.toFixed(1)} (${metrics.ratingCount})`}
         icon="fa-star"
         color="bg-yellow-500"
       />

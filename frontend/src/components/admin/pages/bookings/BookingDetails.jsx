@@ -17,13 +17,15 @@ const STATUS_STYLES = {
   "Waiting for Payment": "bg-orange-100 text-orange-700",
 };
 
-const STATUS_OPTIONS = [
-  "Pending",
-  "Accepted",
-  "Declined",
-  "Completed",
-  "Cancelled",
-];
+const VALID_TRANSITIONS = {
+  "Waiting for Payment": ["Pending", "Cancelled"],
+  Pending: ["Accepted", "Declined", "Cancelled"],
+  Rescheduled: ["Accepted", "Declined", "Cancelled"],
+  Accepted: ["Completed", "Cancelled"],
+  Declined: [],
+  Completed: [],
+  Cancelled: [],
+};
 
 const DetailRow = ({ label, value }) => (
   <div className="border-b border-gray-100 py-3">
@@ -157,6 +159,11 @@ const BookingDetails = () => {
   const history = [...(booking.statusHistory || [])].sort(
     (left, right) => new Date(right.changedAt) - new Date(left.changedAt)
   );
+  const nextStatusOptions = [
+    booking.status,
+    ...(VALID_TRANSITIONS[booking.status] || []),
+  ];
+  const canUpdateStatus = nextStatusOptions.length > 1;
 
   return (
     <div className="space-y-6">
@@ -244,9 +251,10 @@ const BookingDetails = () => {
                 id="booking-status"
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
+                disabled={!canUpdateStatus}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {STATUS_OPTIONS.map((option) => (
+                {nextStatusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
@@ -265,15 +273,24 @@ const BookingDetails = () => {
                 rows="3"
                 value={statusReason}
                 onChange={(event) => setStatusReason(event.target.value)}
+                disabled={!canUpdateStatus}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Optional note for the audit history"
               />
             </div>
+            {!canUpdateStatus ? (
+              <p className="text-sm text-gray-500">
+                This booking is already in a terminal state and cannot be changed.
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={handleStatusUpdate}
               disabled={
-                statusUpdating || !selectedStatus || selectedStatus === booking.status
+                statusUpdating ||
+                !canUpdateStatus ||
+                !selectedStatus ||
+                selectedStatus === booking.status
               }
               className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
             >

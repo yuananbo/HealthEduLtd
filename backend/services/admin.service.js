@@ -375,6 +375,14 @@ class AdminService {
         },
         {
           $lookup: {
+            from: "therapistratings",
+            localField: "_id",
+            foreignField: "therapist",
+            as: "ratingInfo",
+          },
+        },
+        {
+          $lookup: {
             from: "therapists",
             localField: "_id",
             foreignField: "_id",
@@ -427,7 +435,10 @@ class AdminService {
                 else: "$paymentInfo",
               },
             },
-            averageRating: { $ifNull: [{ $avg: "$therapistInfo.ratings" }, 0] },
+            averageRating: {
+              $ifNull: [{ $avg: "$ratingInfo.rating" }, 0],
+            },
+            ratingCount: { $size: "$ratingInfo" },
             completionRate: {
               $cond: [
                 { $eq: ["$totalAppointments", 0] },
@@ -467,6 +478,7 @@ class AdminService {
           },
           paymentInfo: [{ currency: "N/A", totalAmount: 0 }],
           averageRating: 0,
+          ratingCount: 0,
           completionRate: 0,
         };
       }
