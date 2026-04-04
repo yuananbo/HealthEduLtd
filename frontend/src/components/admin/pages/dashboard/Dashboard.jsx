@@ -3,6 +3,8 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { UserContext } from "../../../../context/UserContext";
 import { adminBaseURL } from "../../../../utils/adminApi";
 
+const DASHBOARD_STATE_KEY = "admin-dashboard-panel-state";
+
 const STATUS_STYLES = {
   active: "bg-green-100 text-green-700",
   verified: "bg-green-100 text-green-700",
@@ -243,6 +245,74 @@ const dashboardTableConfigs = [
   },
 ];
 
+const createDefaultDashboardState = () => ({
+  searchValues: {
+    users: "",
+    therapists: "",
+    contents: "",
+    devices: "",
+  },
+  collapsedSections: {
+    users: false,
+    therapists: false,
+    contents: false,
+    devices: false,
+  },
+  pagination: {
+    users: { page: 1, pageSize: 5 },
+    therapists: { page: 1, pageSize: 5 },
+    contents: { page: 1, pageSize: 5 },
+    devices: { page: 1, pageSize: 5 },
+  },
+});
+
+const readPersistedDashboardState = () => {
+  if (typeof window === "undefined") {
+    return createDefaultDashboardState();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_STATE_KEY);
+    if (!raw) {
+      return createDefaultDashboardState();
+    }
+
+    const parsed = JSON.parse(raw);
+    const defaults = createDefaultDashboardState();
+
+    return {
+      searchValues: {
+        ...defaults.searchValues,
+        ...(parsed.searchValues || {}),
+      },
+      collapsedSections: {
+        ...defaults.collapsedSections,
+        ...(parsed.collapsedSections || {}),
+      },
+      pagination: {
+        users: {
+          ...defaults.pagination.users,
+          ...(parsed.pagination?.users || {}),
+        },
+        therapists: {
+          ...defaults.pagination.therapists,
+          ...(parsed.pagination?.therapists || {}),
+        },
+        contents: {
+          ...defaults.pagination.contents,
+          ...(parsed.pagination?.contents || {}),
+        },
+        devices: {
+          ...defaults.pagination.devices,
+          ...(parsed.pagination?.devices || {}),
+        },
+      },
+    };
+  } catch {
+    return createDefaultDashboardState();
+  }
+};
+
 const SectionCard = ({
   title,
   subtitle,
@@ -400,6 +470,7 @@ const DashboardTableCard = ({
 
 const Dashboard = () => {
   const { currentUser } = useContext(UserContext);
+  const persistedState = useMemo(() => readPersistedDashboardState(), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [kpis, setKpis] = useState({
@@ -414,24 +485,11 @@ const Dashboard = () => {
     contents: [],
     devices: DEFAULT_DEVICES,
   });
-  const [searchValues, setSearchValues] = useState({
-    users: "",
-    therapists: "",
-    contents: "",
-    devices: "",
-  });
-  const [collapsedSections, setCollapsedSections] = useState({
-    users: false,
-    therapists: false,
-    contents: false,
-    devices: false,
-  });
-  const [pagination, setPagination] = useState({
-    users: { page: 1, pageSize: 5 },
-    therapists: { page: 1, pageSize: 5 },
-    contents: { page: 1, pageSize: 5 },
-    devices: { page: 1, pageSize: 5 },
-  });
+  const [searchValues, setSearchValues] = useState(persistedState.searchValues);
+  const [collapsedSections, setCollapsedSections] = useState(
+    persistedState.collapsedSections
+  );
+  const [pagination, setPagination] = useState(persistedState.pagination);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -490,6 +548,21 @@ const Dashboard = () => {
 
     return nextRows;
   }, [datasets, searchValues]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      DASHBOARD_STATE_KEY,
+      JSON.stringify({
+        searchValues,
+        collapsedSections,
+        pagination,
+      })
+    );
+  }, [searchValues, collapsedSections, pagination]);
 
   const handleSearchChange = (sectionKey, value) => {
     setSearchValues((previous) => ({
