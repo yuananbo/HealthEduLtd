@@ -7,6 +7,9 @@ import {
 } from "../../controllers/admin/admin.controller.js";
 import AdminService from "../../services/admin.service.js";
 
+const VALID_ADMIN_ID = "507f1f77bcf86cd799439013";
+const VALID_BOOKING_ID = "507f1f77bcf86cd799439014";
+
 const createResponse = () => {
   const response = {
     statusCode: 200,
@@ -55,7 +58,7 @@ test("getAdminBookings returns list payload from admin service", async () => {
   try {
     const req = {
       user: {
-        _id: "admin-1",
+        _id: VALID_ADMIN_ID,
         role: "admin",
         userType: "admin",
       },
@@ -77,16 +80,16 @@ test("getAdminBookings returns list payload from admin service", async () => {
 test("getAdminBookingById returns booking details", async () => {
   const original = AdminService.getAdminBookingById;
   AdminService.getAdminBookingById = async () => ({
-    _id: "booking-2",
+    _id: VALID_BOOKING_ID,
     status: "Accepted",
     statusHistory: [],
   });
 
   try {
     const req = {
-      params: { id: "booking-2" },
+      params: { id: VALID_BOOKING_ID },
       user: {
-        _id: "admin-1",
+        _id: VALID_ADMIN_ID,
         role: "admin",
         userType: "admin",
       },
@@ -96,7 +99,7 @@ test("getAdminBookingById returns booking details", async () => {
     await getAdminBookingById(req, res, () => {});
 
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.data._id, "booking-2");
+    assert.equal(res.body.data._id, VALID_BOOKING_ID);
   } finally {
     AdminService.getAdminBookingById = original;
   }
@@ -104,10 +107,10 @@ test("getAdminBookingById returns booking details", async () => {
 
 test("updateAdminBookingStatus validates missing status", async () => {
   const req = {
-    params: { id: "booking-3" },
+    params: { id: VALID_BOOKING_ID },
     body: {},
     user: {
-      _id: "admin-1",
+      _id: VALID_ADMIN_ID,
       role: "admin",
       userType: "admin",
     },
@@ -124,7 +127,7 @@ test("updateAdminBookingStatus returns updated booking payload", async () => {
   const original = AdminService.updateAdminBookingStatus;
   AdminService.updateAdminBookingStatus = async () => ({
     appointment: {
-      _id: "booking-4",
+      _id: VALID_BOOKING_ID,
       status: "Cancelled",
     },
     patientEmailResponse: null,
@@ -132,10 +135,10 @@ test("updateAdminBookingStatus returns updated booking payload", async () => {
 
   try {
     const req = {
-      params: { id: "booking-4" },
+      params: { id: VALID_BOOKING_ID },
       body: { status: "Cancelled", reason: "Duplicate booking" },
       user: {
-        _id: "admin-1",
+        _id: VALID_ADMIN_ID,
         role: "admin",
         userType: "admin",
       },
@@ -150,4 +153,21 @@ test("updateAdminBookingStatus returns updated booking payload", async () => {
   } finally {
     AdminService.updateAdminBookingStatus = original;
   }
+});
+
+test("getAdminBookingById rejects invalid booking ids", async () => {
+  const req = {
+    params: { id: "booking-2" },
+    user: {
+      _id: VALID_ADMIN_ID,
+      role: "admin",
+      userType: "admin",
+    },
+  };
+  const res = createResponse();
+
+  await getAdminBookingById(req, res, () => {});
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.message, "Invalid booking id");
 });

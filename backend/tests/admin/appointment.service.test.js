@@ -6,6 +6,9 @@ import AdminService from "../../services/admin.service.js";
 import AppointmentService from "../../services/appointment.service.js";
 import AvailabilityService from "../../services/availability.service.js";
 
+const VALID_ADMIN_ID = "507f1f77bcf86cd799439013";
+const VALID_BOOKING_ID = "507f1f77bcf86cd799439014";
+
 const originalAdminFindById = Admin.findById;
 const originalAppointmentFindById = Appointment.findById;
 const originalReleaseTimeSlot = AvailabilityService.releaseTimeSlot;
@@ -130,7 +133,7 @@ test("updateAppointmentStatus does not save when status is unchanged", async () 
 
 test("getAdminBookingById synthesizes legacy history when record has none", async () => {
   Admin.findById = async () => ({
-    _id: "admin-1",
+    _id: VALID_ADMIN_ID,
     role: "admin",
     userType: "admin",
   });
@@ -158,8 +161,8 @@ test("getAdminBookingById synthesizes legacy history when record has none", asyn
   });
 
   const booking = await AdminService.getAdminBookingById(
-    "admin-1",
-    "appointment-legacy"
+    VALID_ADMIN_ID,
+    VALID_BOOKING_ID
   );
 
   assert.equal(booking.statusHistory.length, 1);

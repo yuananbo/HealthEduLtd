@@ -9,6 +9,8 @@ import {
   updateAdminContentStatus,
 } from "../../controllers/admin/admin.controller.js";
 
+const VALID_CONTENT_ID = "507f1f77bcf86cd799439011";
+
 const originalCountDocuments = EducationContent.countDocuments;
 const originalFind = EducationContent.find;
 const originalFindById = EducationContent.findById;
@@ -112,7 +114,7 @@ test("getAdminContentById returns 404 when content does not exist", async () => 
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "missing" },
+    params: { id: VALID_CONTENT_ID },
   };
   const res = createResponse();
 
@@ -128,14 +130,14 @@ test("getAdminContentById returns content payload when found", async () => {
       return this;
     },
     lean: async () => ({
-      _id: "content-1",
+      _id: VALID_CONTENT_ID,
       title: "Healthy Eating",
     }),
   });
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "content-1" },
+    params: { id: VALID_CONTENT_ID },
   };
   const res = createResponse();
 
@@ -197,7 +199,7 @@ test("createAdminContent persists normalized payload", async () => {
 test("updateAdminContentStatus rejects non-boolean payload", async () => {
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "content-1" },
+    params: { id: VALID_CONTENT_ID },
     body: { isPublished: "yes" },
   };
   const res = createResponse();
@@ -214,14 +216,14 @@ test("updateAdminContentStatus returns updated content", async () => {
       return this;
     },
     lean: async () => ({
-      _id: "content-1",
+      _id: VALID_CONTENT_ID,
       isPublished: false,
     }),
   });
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "content-1" },
+    params: { id: VALID_CONTENT_ID },
     body: { isPublished: false },
   };
   const res = createResponse();
@@ -243,7 +245,7 @@ test("updateAdminContentStatus returns 404 when content is missing", async () =>
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "missing" },
+    params: { id: VALID_CONTENT_ID },
     body: { isPublished: true },
   };
   const res = createResponse();
@@ -257,7 +259,7 @@ test("updateAdminContentStatus returns 404 when content is missing", async () =>
 test("updateAdminContent validates invalid order payload", async () => {
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "content-1" },
+    params: { id: VALID_CONTENT_ID },
     body: {
       topic: "nutrition",
       type: "article",
@@ -295,7 +297,7 @@ test("updateAdminContent returns updated content on success", async () => {
 
   const req = {
     user: { role: "admin", userType: "admin" },
-    params: { id: "content-1" },
+    params: { id: VALID_CONTENT_ID },
     body: {
       topic: "nutrition",
       type: "article",
@@ -316,5 +318,54 @@ test("updateAdminContent returns updated content on success", async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(updatedPayload.payload.title, "Updated Title");
   assert.equal(updatedPayload.payload.order, 4);
-  assert.equal(res.body.data._id, "content-1");
+  assert.equal(res.body.data._id, VALID_CONTENT_ID);
+});
+
+test("getAdminContentById rejects invalid content ids", async () => {
+  const req = {
+    user: { role: "admin", userType: "admin" },
+    params: { id: "content-1" },
+  };
+  const res = createResponse();
+
+  await getAdminContentById(req, res, () => {});
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.message, "Invalid content id");
+});
+
+test("getAdminContents escapes regex metacharacters in search", async () => {
+  let receivedQuery = null;
+  EducationContent.countDocuments = async (query) => {
+    receivedQuery = query;
+    return 0;
+  };
+  EducationContent.find = (query) => {
+    receivedQuery = query;
+    return {
+      select() {
+        return this;
+      },
+      sort() {
+        return this;
+      },
+      skip() {
+        return this;
+      },
+      limit() {
+        return this;
+      },
+      lean: async () => [],
+    };
+  };
+
+  const req = {
+    user: { role: "admin", userType: "admin" },
+    query: { search: "healthy.*(test)" },
+  };
+  const res = createResponse();
+
+  await getAdminContents(req, res, () => {});
+
+  assert.equal(receivedQuery.$or[0].title.$regex, "healthy\\.\\*\\(test\\)");
 });

@@ -13,8 +13,8 @@
  * - New providers (or a stubbed/no-op provider) can be introduced as alternative strategies without
  *   rewriting appointment creation logic.
  */
-import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
+import FlutterwaveClient from "./flutterwaveClient.js";
 import { getPublicBackendBaseUrl } from "./paymentEnv.js";
 dotenv.config();
 
@@ -32,7 +32,7 @@ export function isMockPayment() {
 let flw = null;
 try {
   if (process.env.FLW_PUBLIC_KEY && process.env.FLW_SECRET_KEY) {
-    flw = new Flutterwave(
+    flw = new FlutterwaveClient(
       process.env.FLW_PUBLIC_KEY,
       process.env.FLW_SECRET_KEY
     );

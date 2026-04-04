@@ -1,8 +1,8 @@
-import Flutterwave from "flutterwave-node-v3";
 import dotenv from "dotenv";
 import Payment from "../models/payment.model.js";
 import Appointment from "../models/appointment.model.js";
 import AppointmentService from "../services/appointment.service.js";
+import FlutterwaveClient from "../utils/flutterwaveClient.js";
 import { getFrontendPaymentSuccessUrl } from "../utils/paymentEnv.js";
 dotenv.config();
 
@@ -10,7 +10,7 @@ dotenv.config();
 let flw = null;
 try {
   if (process.env.FLW_PUBLIC_KEY && process.env.FLW_SECRET_KEY) {
-    flw = new Flutterwave(
+    flw = new FlutterwaveClient(
       process.env.FLW_PUBLIC_KEY,
       process.env.FLW_SECRET_KEY
     );
@@ -46,10 +46,10 @@ export const handleFlutterwaveWebhook = async (req, res) => {
       // Verify transaction
       const response = await flw.Transaction.verify({ id });
       if (
-        response.data.status === "successful" &&
-        response.data.amount >= amount &&
-        response.data.currency === currency &&
-        response.data.tx_ref === tx_ref
+        response.status === "successful" &&
+        response.amount >= amount &&
+        response.currency === currency &&
+        response.tx_ref === tx_ref
       ) {
         const payment = await Payment.findOne({ appointment: appointmentId });
         if (payment) {
@@ -126,13 +126,13 @@ export const handleFlutterwaveRedirect = async (req, res) => {
       console.log("Verification response:", flwResponse);
 
       // Ensure tx_ref is correctly set and compared
-      const verifiedTxRef = flwResponse.data.tx_ref;
+      const verifiedTxRef = flwResponse.tx_ref;
       console.log("Verified tx_ref:", verifiedTxRef);
 
       if (
-        flwResponse.data.status === "successful" &&
-        flwResponse.data.amount === amount &&
-        flwResponse.data.currency === currency &&
+        flwResponse.status === "successful" &&
+        flwResponse.amount === amount &&
+        flwResponse.currency === currency &&
         verifiedTxRef === txRef
       ) {
         const appointmentId = txRef.split("-")[1];
@@ -166,9 +166,9 @@ export const handleFlutterwaveRedirect = async (req, res) => {
         }
       } else {
         console.log("Verification failed", {
-          responseStatus: flwResponse.data.status,
-          responseAmount: flwResponse.data.amount,
-          responseCurrency: flwResponse.data.currency,
+          responseStatus: flwResponse.status,
+          responseAmount: flwResponse.amount,
+          responseCurrency: flwResponse.currency,
           responseTxRef: verifiedTxRef,
           expectedTxRef: txRef,
         });
