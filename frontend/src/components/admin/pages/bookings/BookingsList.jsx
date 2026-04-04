@@ -16,6 +16,14 @@ const STATUS_OPTIONS = [
   "Waiting for Payment",
 ];
 
+const QUEUE_OPTIONS = [
+  { value: "all", label: "All queues" },
+  { value: "needs_payment_follow_up", label: "Needs Payment Follow-up" },
+  { value: "awaiting_therapist_action", label: "Awaiting Therapist Action" },
+  { value: "reschedule_review", label: "Reschedule Review" },
+  { value: "home_care_missing_address", label: "Home-care Missing Address" },
+];
+
 const STATUS_STYLES = {
   Pending: "bg-yellow-100 text-yellow-700",
   Accepted: "bg-blue-100 text-blue-700",
@@ -26,12 +34,36 @@ const STATUS_STYLES = {
   "Waiting for Payment": "bg-orange-100 text-orange-700",
 };
 
+const OPERATIONAL_FLAG_LABELS = {
+  needs_payment_follow_up: "Needs Payment Follow-up",
+  awaiting_therapist_action: "Awaiting Therapist Action",
+  reschedule_review: "Reschedule Review",
+  home_care_missing_address: "Home-care Missing Address",
+};
+
 const formatDate = (value) => {
   if (!value) {
     return "-";
   }
 
   return new Date(value).toLocaleDateString();
+};
+
+const ACTIVE_STATUS_CARD_STYLES = {
+  Pending: "border-yellow-300 bg-yellow-50",
+  Accepted: "border-blue-300 bg-blue-50",
+  Declined: "border-red-300 bg-red-50",
+  Completed: "border-green-300 bg-green-50",
+  Cancelled: "border-gray-300 bg-gray-100",
+  Rescheduled: "border-purple-300 bg-purple-50",
+  "Waiting for Payment": "border-orange-300 bg-orange-50",
+};
+
+const ACTIVE_QUEUE_CARD_STYLES = {
+  needs_payment_follow_up: "border-orange-300 bg-orange-50",
+  awaiting_therapist_action: "border-yellow-300 bg-yellow-50",
+  reschedule_review: "border-purple-300 bg-purple-50",
+  home_care_missing_address: "border-red-300 bg-red-50",
 };
 
 const BookingsList = () => {
@@ -42,6 +74,7 @@ const BookingsList = () => {
   const [stats, setStats] = useState({
     total: 0,
     statusCounts: {},
+    queueCounts: {},
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -52,6 +85,7 @@ const BookingsList = () => {
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
+    queue: "all",
     sortOrder: "desc",
     page: 1,
     limit: 10,
@@ -74,7 +108,9 @@ const BookingsList = () => {
       });
 
       setBookings(response?.data?.data || []);
-      setStats(response?.data?.stats || { total: 0, statusCounts: {} });
+      setStats(
+        response?.data?.stats || { total: 0, statusCounts: {}, queueCounts: {} }
+      );
       setPagination(
         response?.data?.pagination || {
           currentPage: 1,
@@ -142,19 +178,6 @@ const BookingsList = () => {
         />
 
         <select
-          aria-label="Filter by booking status"
-          value={filters.status}
-          className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(event) => handleFilterChange("status", event.target.value)}
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option === "all" ? "All statuses" : option}
-            </option>
-          ))}
-        </select>
-
-        <select
           aria-label="Sort bookings"
           value={filters.sortOrder}
           className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -183,19 +206,117 @@ const BookingsList = () => {
           </p>
           <p className="text-sm font-medium text-gray-700">
             {filters.status === "all" ? "All bookings" : filters.status}
+            {filters.queue !== "all"
+              ? ` • ${QUEUE_OPTIONS.find(
+                  (option) => option.value === filters.queue
+                )?.label}`
+              : ""}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Object.entries(stats.statusCounts || {}).map(([label, count]) => (
-          <div key={label} className="rounded-lg bg-white p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-wide text-gray-500">
-              {label}
+      <div className="rounded-lg bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Status Filters</p>
+            <p className="text-xs text-gray-500">
+              Click a status block to filter the table.
             </p>
-            <p className="mt-2 text-2xl font-bold text-gray-800">{count}</p>
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={() => handleFilterChange("status", "all")}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              filters.status === "all"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            All bookings
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[980px] grid-cols-7 gap-3">
+            {STATUS_OPTIONS.filter((option) => option !== "all").map((label) => {
+              const isActive = filters.status === label;
+              const count = stats.statusCounts?.[label] || 0;
+
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handleFilterChange("status", label)}
+                  className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
+                    isActive
+                      ? ACTIVE_STATUS_CARD_STYLES[label] ||
+                        "border-slate-300 bg-slate-50"
+                      : "border-gray-200 bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  <p className="text-xs uppercase tracking-wide text-gray-500">
+                    {label}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-gray-800">
+                    {count}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Queue Filters</p>
+            <p className="text-xs text-gray-500">
+              Click a queue block to filter admin follow-up cases.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleFilterChange("queue", "all")}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              filters.queue === "all"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            All queues
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[980px] grid-cols-4 gap-3">
+            {QUEUE_OPTIONS.filter((option) => option.value !== "all").map(
+              (option) => {
+                const isActive = filters.queue === option.value;
+                const count = stats.queueCounts?.[option.value] || 0;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleFilterChange("queue", option.value)}
+                    className={`min-w-0 rounded-lg border p-4 text-left shadow-sm transition ${
+                      isActive
+                        ? ACTIVE_QUEUE_CARD_STYLES[option.value] ||
+                          "border-slate-300 bg-slate-50"
+                        : "border-gray-200 bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide text-gray-500">
+                      {option.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-800">
+                      {count}
+                    </p>
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
@@ -208,6 +329,7 @@ const BookingsList = () => {
               <th className="px-6 py-3">Date</th>
               <th className="px-6 py-3">Time</th>
               <th className="px-6 py-3">Status</th>
+              <th className="px-6 py-3">Operations</th>
               <th className="px-6 py-3 text-center">Action</th>
             </tr>
           </thead>
@@ -247,6 +369,22 @@ const BookingsList = () => {
                     {booking.status}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-2">
+                    {(booking.operationalFlags || []).length > 0 ? (
+                      booking.operationalFlags.map((flag) => (
+                        <span
+                          key={flag}
+                          className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                        >
+                          {OPERATIONAL_FLAG_LABELS[flag] || flag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gray-400">No flags</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 text-center">
                   <Link
                     to={`/admin/bookings/${booking._id}`}
@@ -259,7 +397,7 @@ const BookingsList = () => {
             ))}
             {!bookings.length ? (
               <tr>
-                <td className="px-6 py-8 text-center text-gray-500" colSpan={7}>
+                <td className="px-6 py-8 text-center text-gray-500" colSpan={8}>
                   No bookings found for the selected filters.
                 </td>
               </tr>

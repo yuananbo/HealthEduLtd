@@ -17,6 +17,13 @@ const STATUS_STYLES = {
   "Waiting for Payment": "bg-orange-100 text-orange-700",
 };
 
+const OPERATIONAL_FLAG_LABELS = {
+  needs_payment_follow_up: "Needs Payment Follow-up",
+  awaiting_therapist_action: "Awaiting Therapist Action",
+  reschedule_review: "Reschedule Review",
+  home_care_missing_address: "Home-care Missing Address",
+};
+
 const VALID_TRANSITIONS = {
   "Waiting for Payment": ["Pending", "Cancelled"],
   Pending: ["Accepted", "Declined", "Cancelled"],
@@ -306,6 +313,28 @@ const BookingDetails = () => {
           <DetailRow label="Created At" value={formatDateTime(booking.createdAt)} />
           <DetailRow label="Last Updated" value={formatDateTime(booking.updatedAt)} />
           <DetailRow label="Current State" value={booking.status} />
+        </section>
+
+        <section className="rounded-lg bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-gray-800">
+            Operations Summary
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {(booking.operationalFlags || []).length > 0 ? (
+              booking.operationalFlags.map((flag) => (
+                <span
+                  key={flag}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                >
+                  {OPERATIONAL_FLAG_LABELS[flag] || flag}
+                </span>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">
+                No operational follow-up flags for this booking.
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="rounded-lg bg-white p-6 shadow-sm">

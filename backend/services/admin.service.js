@@ -18,6 +18,47 @@ class AdminService {
     "Waiting for Payment",
   ];
 
+  static OPERATIONAL_QUEUE_OPTIONS = [
+    "all",
+    "needs_payment_follow_up",
+    "awaiting_therapist_action",
+    "reschedule_review",
+    "home_care_missing_address",
+  ];
+
+  static buildOperationalFlags(booking) {
+    const flags = [];
+
+    if (booking?.status === "Waiting for Payment") {
+      flags.push("needs_payment_follow_up");
+    }
+
+    if (booking?.status === "Pending") {
+      flags.push("awaiting_therapist_action");
+    }
+
+    if (booking?.status === "Rescheduled") {
+      flags.push("reschedule_review");
+    }
+
+    const isHomeCare = booking?.appointmentType === "home-care";
+    const homeAddress = booking?.homeAddress || {};
+    const hasAddress = [
+      homeAddress.street,
+      homeAddress.district,
+      homeAddress.city,
+      homeAddress.country,
+    ]
+      .filter(Boolean)
+      .length > 0;
+
+    if (isHomeCare && !hasAddress) {
+      flags.push("home_care_missing_address");
+    }
+
+    return flags;
+  }
+
   static async createSuperAdmin(email, password, res) {
     try {
       const existingSuperAdmin = await Admin.findOne({ role: "super-admin" });
@@ -617,6 +658,7 @@ class AdminService {
       const {
         search = "",
         status = "all",
+        queue = "all",
         page = 1,
         limit = 10,
         sortOrder = "desc",
@@ -627,17 +669,11 @@ class AdminService {
       const skip = (pageNum - 1) * limitNum;
       const normalizedSearch = search.trim();
 
-      const filters = {};
-      if (status !== "all") {
-        filters.status = status;
-      }
-
       const searchRegex = normalizedSearch
         ? new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
         : null;
 
       const aggregationPipeline = [
-        { $match: filters },
         {
           $lookup: {
             from: "patients",
@@ -691,7 +727,6 @@ class AdminService {
         ...aggregationPipeline,
         {
           $facet: {
-            metadata: [{ $count: "total" }],
             bookings: [
               {
                 $sort: {
@@ -700,19 +735,18 @@ class AdminService {
                   createdAt: sortOrder === "asc" ? 1 : -1,
                 },
               },
-              { $skip: skip },
-              { $limit: limitNum },
               {
                 $project: {
-                  _id: 1,
+                    _id: 1,
                   date: 1,
                   time: 1,
                   status: 1,
                   service: 1,
                   appointmentType: 1,
-                  purpose: 1,
-                  createdAt: 1,
-                  updatedAt: 1,
+                    purpose: 1,
+                    homeAddress: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
                   patient: {
                     id: "$patientInfo._id",
                     fullName: {
@@ -746,20 +780,27 @@ class AdminService {
                 },
               },
             ],
-            statusBreakdown: [
-              {
-                $group: {
-                  _id: "$status",
-                  count: { $sum: 1 },
-                },
-              },
-            ],
           },
         },
       ]);
 
-      const total = result?.metadata?.[0]?.total || 0;
-      const totalPages = Math.max(1, Math.ceil(total / limitNum));
+      const allMatchedBookings = (result?.bookings || []).map((booking) => ({
+        ...booking,
+        operationalFlags: this.buildOperationalFlags(booking),
+      }));
+
+      const queueScopedBookings =
+        queue === "all"
+          ? allMatchedBookings
+          : allMatchedBookings.filter((booking) =>
+              booking.operationalFlags.includes(queue)
+            );
+
+      const statusScopedBookings =
+        status === "all"
+          ? allMatchedBookings
+          : allMatchedBookings.filter((booking) => booking.status === status);
+
       const statusCounts = AdminService.BOOKING_STATUS_OPTIONS.reduce(
         (accumulator, option) => ({
           ...accumulator,
@@ -768,20 +809,42 @@ class AdminService {
         {}
       );
 
-      for (const entry of result?.statusBreakdown || []) {
-        statusCounts[entry._id] = entry.count;
+      for (const booking of queueScopedBookings) {
+        statusCounts[booking.status] = (statusCounts[booking.status] || 0) + 1;
       }
 
+      const filteredBookings =
+        status === "all"
+          ? queueScopedBookings
+          : queueScopedBookings.filter((booking) => booking.status === status);
+
+      const queueCounts = this.OPERATIONAL_QUEUE_OPTIONS.filter(
+        (option) => option !== "all"
+      ).reduce(
+        (accumulator, option) => ({
+          ...accumulator,
+          [option]: statusScopedBookings.filter((booking) =>
+            booking.operationalFlags.includes(option)
+          ).length,
+        }),
+        {}
+      );
+
+      const total = filteredBookings.length;
+      const totalPages = Math.max(1, Math.ceil(total / limitNum));
+
       return {
-        bookings: result?.bookings || [],
+        bookings: filteredBookings.slice(skip, skip + limitNum),
         filters: {
           search,
           status,
+          queue,
           sortOrder,
         },
         stats: {
           total,
           statusCounts,
+          queueCounts,
         },
         pagination: {
           currentPage: pageNum,
@@ -838,6 +901,8 @@ class AdminService {
           },
         ];
       }
+
+      booking.operationalFlags = this.buildOperationalFlags(booking);
 
       return booking;
     } catch (error) {
