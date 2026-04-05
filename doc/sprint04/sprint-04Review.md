@@ -40,6 +40,7 @@ Sprint 4 focused on release readiness and delivery, moving from the develop stre
  * **Admin filtering improved**: Administrator dashboard filtering now supports more practical criteria for managing users and appointments.
  * **Dashboard greeting mismatch fixed**: Corrected inconsistency where displayed dashboard username did not match profile data.
  * **Therapist timeslot date-shift bug fixed**: Resolved one-day offset behavior caused by UTC casting during appointment time selection.
+ * **Appointment status consistency and transition bugs fixed**: Corrected mismatched appointment statuses between therapist-side and patient-side views, and resolved status transition logic issues during updates.
 
 #### Goals and/or tasks that were planned but not met/completed:
 
