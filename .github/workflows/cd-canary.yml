@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
     outputs:
-      docker-image-tag: latest
+      docker-image-tag: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Check CI workflow success
         run: echo "CI workflow completed successfully"
@@ -47,7 +47,7 @@ jobs:
           az webapp config container set \
             --name Mobirehab \
             --resource-group Mobirehab_group \
-            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest \
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:${{ needs.check-ci-success.outputs.docker-image-tag }} \
             --docker-registry-server-url https://index.docker.io \
             --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
@@ -124,7 +124,7 @@ jobs:
           az webapp config container set \
             --name c01mobirehab \
             --resource-group Mobirehab_group \
-            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest \
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:${{ needs.check-ci-success.outputs.docker-image-tag }} \
             --docker-registry-server-url https://index.docker.io \
             --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
@@ -202,7 +202,7 @@ jobs:
           MATCHES=$(grep -R -n -E -i "error|exception|panic|fatal|traceback" backend-logs frontend-logs || true)
           if [ -n "$MATCHES" ]; then
             echo "❌ Error patterns found in canary logs"
-            echo "$MATCHES" | head -n 150
+            echo "$MATCHES" | head -n 10
             exit 1
           fi
           echo "✅ Error-free logs check passed (short interval)"
@@ -245,7 +245,7 @@ jobs:
           az webapp config container set \
             --name Mobirehab \
             --resource-group Mobirehab_group \
-            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest \
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:${{ needs.check-ci-success.outputs.docker-image-tag }} \
             --docker-registry-server-url https://index.docker.io \
             --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
@@ -257,7 +257,7 @@ jobs:
           az webapp config container set \
             --name c01mobirehab \
             --resource-group Mobirehab_group \
-            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest \
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:${{ needs.check-ci-success.outputs.docker-image-tag }} \
             --docker-registry-server-url https://index.docker.io \
             --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
