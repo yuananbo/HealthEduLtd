@@ -45,17 +45,13 @@ jobs:
           az account show
           az account list --output table
 
-      - name: Deploy backend to canary (Mobirehab)
-        uses: azure/container-apps-deploy-action@v1
-        with:
-          appSourceUrl: ${{ github.server_url }}/${{ github.repository }}
-          acrName: docker.io
-          acrUsername: ${{ secrets.DOCKERHUB_USERNAME }}
-          acrPassword: ${{ secrets.DOCKERHUB_TOKEN }}
-          containerAppName: Mobirehab
-          resourceGroup: Mobirehab_group
-          imageToDeploy: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest
-          runtimeStack: node
+      - name: Deploy backend to canary
+        run: |
+          echo "Deploying backend to canary environment..."
+          az containerapp update \
+            --name Mobirehab \
+            --resource-group Mobirehab_group \
+            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest
 
       - name: Wait for canary to start
         run: sleep 120
@@ -235,4 +231,5 @@ jobs:
           echo "Canary deployment or health checks failed"
           echo "Please check the logs above for details"
           exit 1
+
 
