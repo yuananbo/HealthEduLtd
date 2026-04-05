@@ -11,14 +11,8 @@ const deriveAzureBackendUrl = () => {
     return `${protocol}//${hostname}:8000`;
   }
 
-  // Azure frontend is deployed as c01mobirehab-<stamp>.azurewebsites.net
-  // while the paired backend uses the same stamp with the Mobirehab prefix.
-  if (hostname.endsWith(".azurewebsites.net") && hostname.startsWith("c01mobirehab-")) {
-    return `${protocol}//${hostname.replace(/^c01mobirehab-/i, "mobirehab-")}`;
-  }
-
   if (hostname.endsWith(".azurewebsites.net")) {
-    return origin;
+    return "";
   }
 
   return null;
