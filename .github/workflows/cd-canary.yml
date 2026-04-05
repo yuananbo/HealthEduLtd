@@ -53,6 +53,15 @@ jobs:
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
           az webapp restart --name Mobirehab --resource-group Mobirehab_group
 
+      - name: Print backend deployed image tag
+        run: |
+          echo "Current backend linuxFxVersion:"
+          az webapp config container show \
+            --name Mobirehab \
+            --resource-group Mobirehab_group \
+            --query "linuxFxVersion" \
+            -o tsv
+
       - name: Wait for canary to start
         run: sleep 120
 
@@ -129,6 +138,15 @@ jobs:
             --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
             --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
           az webapp restart --name c01mobirehab --resource-group Mobirehab_group
+
+      - name: Print frontend deployed image tag
+        run: |
+          echo "Current frontend linuxFxVersion:"
+          az webapp config container show \
+            --name c01mobirehab \
+            --resource-group Mobirehab_group \
+            --query "linuxFxVersion" \
+            -o tsv
 
       - name: Wait for canary frontend to start
         run: sleep 60
