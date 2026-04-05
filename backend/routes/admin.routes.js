@@ -27,7 +27,6 @@ import {
 } from "../controllers/admin/admin.controller.js";
 import validateToken from "../middleware/validateToken.js";
 import { checkRouteIsEnabled } from "../middleware/checkRouteIsEnabled.js";
-import { setupLimiter } from "../utils/setUpLimiter.js";
 
 const router = express.Router();
 
@@ -42,7 +41,7 @@ router
   );
 
 // login admin route
-router.route("/login").post(setupLimiter, loginAdmin);
+router.route("/login").post(loginAdmin);
 
 // Protected admin routes
 router.use(validateToken);
