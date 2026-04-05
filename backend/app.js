@@ -40,14 +40,47 @@ const __dirname = path.resolve();
 // Serve uploaded files (local storage)
 app.use("/uploads", express.static(path.join(__dirname, "backend", "uploads")));
 
-// CORS: allow Azure frontend domain via env, with local dev fallback
-const allowedOrigin =
-  process.env.FRONTEND_ORIGIN && process.env.FRONTEND_ORIGIN.trim().length > 0
-    ? process.env.FRONTEND_ORIGIN
-    : "http://localhost:5173";
+const configuredOrigins = (process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...configuredOrigins,
+]);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return (
+      protocol === "https:" &&
+      hostname.endsWith(".azurewebsites.net") &&
+      hostname.startsWith("c01mobirehab-")
+    );
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

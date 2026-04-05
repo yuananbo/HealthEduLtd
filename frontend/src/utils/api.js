@@ -1,11 +1,9 @@
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-
-const apiLocalUrl =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/";
+import { getApiBaseUrl } from "./getApiBaseUrl";
 
 const api = axios.create({
-  baseURL: `${apiLocalUrl}api/v1/`,
+  baseURL: `${getApiBaseUrl()}/api/v1/`,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
