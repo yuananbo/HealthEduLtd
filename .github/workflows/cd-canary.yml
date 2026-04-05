@@ -44,10 +44,14 @@ jobs:
       - name: Deploy backend to canary
         run: |
           echo "Deploying backend to canary environment..."
-          az containerapp update \
+          az webapp config container set \
             --name Mobirehab \
             --resource-group Mobirehab_group \
-            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest \
+            --docker-registry-server-url https://index.docker.io \
+            --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
+          az webapp restart --name Mobirehab --resource-group Mobirehab_group
 
       - name: Wait for canary to start
         run: sleep 120
@@ -114,10 +118,14 @@ jobs:
       - name: Deploy frontend to canary
         run: |
           echo "Deploying frontend to canary environment..."
-          az containerapp update \
+          az webapp config container set \
             --name c01mobirehab \
             --resource-group Mobirehab_group \
-            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest \
+            --docker-registry-server-url https://index.docker.io \
+            --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
+          az webapp restart --name c01mobirehab --resource-group Mobirehab_group
 
       - name: Wait for canary frontend to start
         run: sleep 60
@@ -159,18 +167,26 @@ jobs:
       - name: Promote canary to production - Backend
         run: |
           echo "Promoting canary backend to production (Mobirehab)..."
-          az containerapp update \
+          az webapp config container set \
             --name Mobirehab \
             --resource-group Mobirehab_group \
-            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-backend:latest \
+            --docker-registry-server-url https://index.docker.io \
+            --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
+          az webapp restart --name Mobirehab --resource-group Mobirehab_group
 
       - name: Promote canary to production - Frontend
         run: |
           echo "Promoting canary frontend to production (c01mobirehab)..."
-          az containerapp update \
+          az webapp config container set \
             --name c01mobirehab \
             --resource-group Mobirehab_group \
-            --image docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest
+            --docker-custom-image-name docker.io/${{ secrets.DOCKERHUB_USERNAME }}/healtheduld-frontend:latest \
+            --docker-registry-server-url https://index.docker.io \
+            --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
+          az webapp restart --name c01mobirehab --resource-group Mobirehab_group
 
       - name: Verify production deployment
         run: |
@@ -207,7 +223,7 @@ jobs:
         run: |
           echo "❌ Deployment failed! Rolling back production..."
           echo "Note: Manual rollback may be required depending on your Azure setup"
-          echo "Check Azure Container Apps revision history for previous versions"
+          echo "Check Azure Web App deployment history for previous versions"
 
       - name: Notify failure
         run: |
