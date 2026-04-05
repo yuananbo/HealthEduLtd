@@ -217,8 +217,18 @@ jobs:
           mkdir -p backend-logs frontend-logs
           unzip -oq backend-logs.zip -d backend-logs
           unzip -oq frontend-logs.zip -d frontend-logs
-          BACKEND_RECENT=$(find backend-logs -type f -name "*.log" -print0 | xargs -0 -r tail -n 20 || true)
-          FRONTEND_RECENT=$(find frontend-logs -type f -name "*.log" -print0 | xargs -0 -r tail -n 20 || true)
+          BACKEND_LOG_FILE=$(find backend-logs -type f -name "*_docker.log" -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)
+          FRONTEND_LOG_FILE=$(find frontend-logs -type f -name "*_docker.log" -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)
+          if [ -z "$BACKEND_LOG_FILE" ]; then
+            BACKEND_LOG_FILE=$(find backend-logs -type f -name "*.log" -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)
+          fi
+          if [ -z "$FRONTEND_LOG_FILE" ]; then
+            FRONTEND_LOG_FILE=$(find frontend-logs -type f -name "*.log" -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)
+          fi
+          echo "Latest backend log file: ${BACKEND_LOG_FILE:-none}"
+          echo "Latest frontend log file: ${FRONTEND_LOG_FILE:-none}"
+          BACKEND_RECENT=$( [ -n "$BACKEND_LOG_FILE" ] && tail -n 20 "$BACKEND_LOG_FILE" || true )
+          FRONTEND_RECENT=$( [ -n "$FRONTEND_LOG_FILE" ] && tail -n 20 "$FRONTEND_LOG_FILE" || true )
           RECENT_LOGS="${BACKEND_RECENT}"$'\n'"${FRONTEND_RECENT}"
           # Strict crash/error matching:
           # - Platform-reported error level (ERR)
