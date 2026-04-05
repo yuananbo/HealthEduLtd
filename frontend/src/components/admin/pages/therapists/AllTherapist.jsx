@@ -50,10 +50,10 @@ const AllTherapist = () => {
   // Fetch therapists on component mount or when currentUser changes
   useEffect(() => {
     // console.log("currentUser:", currentUser);
-    if (currentUser && currentUser.token) {
+    if (currentUser?.token) {
       getAllTherapists();
     }
-  }, [currentUser.token]);
+  }, [currentUser?.token]);
 
   const filteredTherapists = therapists.filter((therapist) =>
     `${therapist?.firstName} ${therapist?.lastName}`
