@@ -5,7 +5,7 @@ const deriveAzureBackendUrl = () => {
     return null;
   }
 
-  const { protocol, hostname } = window.location;
+  const { origin, protocol, hostname } = window.location;
 
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return `${protocol}//${hostname}:8000`;
@@ -15,6 +15,10 @@ const deriveAzureBackendUrl = () => {
   // while the paired backend uses the same stamp with the Mobirehab prefix.
   if (hostname.endsWith(".azurewebsites.net") && hostname.startsWith("c01mobirehab-")) {
     return `${protocol}//${hostname.replace(/^c01mobirehab-/i, "mobirehab-")}`;
+  }
+
+  if (hostname.endsWith(".azurewebsites.net")) {
+    return origin;
   }
 
   return null;
