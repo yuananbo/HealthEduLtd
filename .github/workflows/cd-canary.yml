@@ -40,6 +40,10 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
             }
+      - name: Verify Azure context (canary backend)
+        run: |
+          az account show
+          az account list --output table
 
       - name: Deploy backend to canary (Mobirehab)
         uses: azure/container-apps-deploy-action@v1
@@ -114,6 +118,10 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
             }
+      - name: Verify Azure context (canary frontend)
+        run: |
+          az account show
+          az account list --output table
 
       - name: Deploy frontend to canary
         run: |
@@ -159,6 +167,10 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
             }
+      - name: Verify Azure context (production)
+        run: |
+          az account show
+          az account list --output table
 
       - name: Promote canary to production - Backend
         run: |
@@ -206,6 +218,10 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
             }
+      - name: Verify Azure context (rollback)
+        run: |
+          az account show
+          az account list --output table
 
       - name: Rollback production to previous version
         run: |
