@@ -199,10 +199,13 @@ jobs:
           mkdir -p backend-logs frontend-logs
           unzip -oq backend-logs.zip -d backend-logs
           unzip -oq frontend-logs.zip -d frontend-logs
+          BACKEND_RECENT=$(find backend-logs -type f -name "*.log" -print0 | xargs -0 -r tail -n 20 || true)
+          FRONTEND_RECENT=$(find frontend-logs -type f -name "*.log" -print0 | xargs -0 -r tail -n 20 || true)
+          RECENT_LOGS="${BACKEND_RECENT}"$'\n'"${FRONTEND_RECENT}"
           # Strict crash/error matching:
           # - Platform-reported error level (ERR)
           # - High-confidence runtime crash signatures
-          MATCHES=$(grep -R -n -E -i "(DetailsLevel:\\s*ERR)|(Unhandled[^\\n]*Exception)|Traceback|panic|segmentation fault|OOMKilled|JavaScript heap out of memory" backend-logs frontend-logs || true)
+          MATCHES=$(printf '%s\n' "$RECENT_LOGS" | grep -n -E -i "(DetailsLevel:\\s*ERR)|(Unhandled[^\\n]*Exception)|Traceback|panic|segmentation fault|OOMKilled|JavaScript heap out of memory" || true)
           if [ -n "$MATCHES" ]; then
             echo "❌ Error patterns found in canary logs"
             printf '%s\n' "$MATCHES" | sed -n '1,20p'
