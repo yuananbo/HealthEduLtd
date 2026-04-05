@@ -1,29 +1,19 @@
-FROM node:22-alpine AS deps
+FROM node:22-alpine AS backend-deps
 WORKDIR /app
 COPY package*.json ./
-RUN echo "===== package.json =====" && grep -n '"typescript"' package.json || true
-RUN echo "===== package-lock.json =====" && grep -n '"typescript"\|"4.9.5"\|"6.0.2"' package-lock.json | head -n 50 || true
 RUN npm ci --omit=dev
+
+FROM node:22-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend ./
+RUN npm run build
 
 FROM node:22-alpine
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=backend-deps /app/node_modules ./node_modules
 COPY . .
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 EXPOSE 8000
 CMD ["node", "backend/server.js"]
-
-
-# # ── Stage 1: install production dependencies ──────────────────────────────────
-# FROM node:22-alpine AS deps
-# WORKDIR /app
-# COPY package*.json ./
-# RUN npm ci --omit=dev
-
-# # ── Stage 2: runtime image ─────────────────────────────────────────────────────
-# FROM node:22-alpine
-# WORKDIR /app
-# COPY --from=deps /app/node_modules ./node_modules
-# COPY . .
-# EXPOSE 8000
-# CMD ["node", "backend/server.js"]
-
