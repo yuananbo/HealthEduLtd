@@ -148,8 +148,65 @@ jobs:
             exit 1
           fi
 
+  canary-analysis:
+    needs: [deploy-canary, deploy-frontend-canary]
+    runs-on: ubuntu-latest
+    environment: canary
+    steps:
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Container startup success check
+        run: |
+          BACKEND_STATE=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query state -o tsv)
+          FRONTEND_STATE=$(az webapp show --name c01mobirehab --resource-group Mobirehab_group --query state -o tsv)
+          echo "Backend state: ${BACKEND_STATE}"
+          echo "Frontend state: ${FRONTEND_STATE}"
+          if [ "$BACKEND_STATE" != "Running" ] || [ "$FRONTEND_STATE" != "Running" ]; then
+            echo "❌ Canary startup check failed: webapp is not Running"
+            exit 1
+          fi
+          echo "✅ Container startup success check passed"
+
+      - name: Smoke/API test success
+        run: |
+          BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
+          FRONTEND_HOST=$(az webapp show --name c01mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
+          BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/health" || echo "000")
+          FRONTEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_HOST}/" || echo "000")
+          echo "Backend smoke code: ${BACKEND_CODE}"
+          echo "Frontend smoke code: ${FRONTEND_CODE}"
+          if [ "$BACKEND_CODE" != "200" ] || [ "$FRONTEND_CODE" != "200" ]; then
+            echo "❌ Smoke/API test failed"
+            exit 1
+          fi
+          echo "✅ Smoke/API test success"
+
+      - name: Error-free logs over short interval
+        run: |
+          echo "Collecting logs for short-interval scan..."
+          sleep 20
+          az webapp log download --name Mobirehab --resource-group Mobirehab_group --log-file backend-logs.zip
+          az webapp log download --name c01mobirehab --resource-group Mobirehab_group --log-file frontend-logs.zip
+          mkdir -p backend-logs frontend-logs
+          unzip -oq backend-logs.zip -d backend-logs
+          unzip -oq frontend-logs.zip -d frontend-logs
+          if grep -R -E -i "error|exception|panic|fatal|traceback" backend-logs frontend-logs > /dev/null; then
+            echo "❌ Error patterns found in canary logs"
+            exit 1
+          fi
+          echo "✅ Error-free logs check passed (short interval)"
+
   promote-to-production:
-    needs: [check-ci-success, deploy-canary, deploy-frontend-canary]
+    needs: [check-ci-success, canary-analysis]
     runs-on: ubuntu-latest
     environment: production
     steps:
