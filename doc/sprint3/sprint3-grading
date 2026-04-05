@@ -1,0 +1,70 @@
+# Sprint 3 Marking Scheme
+
+**Team Name:** 111 
+Amy Zhao
+Anbo Yuan
+Yixi Li
+Jiaqi Huang
+Ruoxin Lei
+---
+
+## Version Control (max 5 marks)
+
+- Consistent Usage of Git (2.5 pt):
+- Branches/Naming/Organization (2.5 pt)
+   - 0/1.5 pts: Use of Pull Requests and/or avoidance of direct uploads and merging zip files.
+                 ● Similar to sprint 1, there should be PRs for each feature, that are reviewed by team members and merged periodically to the develop branch.
+
+Version Control Total Mark: 3.5 / 5
+---
+## Code Quality (max 8 marks)
+Lost 0.5 style is mostly consistent, but some files are very large / service-heavy
+Lost 0.5: appointment.service.js and admin.service.js are doing a lot at once, which hurts reuse / ease of modification a bit
+Code Quality Total Mark: 5 / 6
+---
+## UI Design and Ease of Use (8 marks):
+UI Design and Ease of Use Total Mark: 8 / 8
+
+---
+## BackLog Management (10 pts)
+
+Backlog Management Total Mark: 10 / 10
+
+---
+## Project Tracking (max 10 marks)
+Lost 2.0: the burndown is very back-loaded/poorly shaped, not smooth
+Lost 2.0: Explicitly say scope grew early, the middle stayed flat, and most movement happened at the end, so tracking was not especially healthy even though it reached zero remaining work
+Project Tracking Total Mark: 6 / 10
+---
+
+## Planning Meetings (RPM.md, sprint3.md) (max 5 marks)
+Planning Meetings Total Mark: 5 / 5
+
+---
+## NFR (max (14 marks)
+- Well-structured, follows required format, and placed correctly in doc/sprint3 folder as NFR.pdf (3 marks)
+- Clearly explains why the 3 NFRs were prioritized, with strong rationale and categorization, maligning with project needs (3 marks)
+-  Well-explained (min 2) trade-offs, highlighting benefits and reasoning behind choices. (2 marks)
+- 4 / 6 Includes detailed test results, best practices, and explanation implementation. 2 marks for each NFR implementation (6 marks)
+- Performance : 2 / 2
+- Security: 2 / 2
+- Third NFR: 0 / 2: I didn’t  see a clearly separate a third NFR submitted 
+NFR Implementation Total Mark: 12 / 14
+—
+## Unit Testing (max 12 marks)
+Unit Testing mark: 12 / 12
+
+---
+
+## Team Communication (max 5 marks)
+Team Communication Mark: 5 / 5
+
+---
+## Sprint Demo (Max 17 marks) 
+
+Your Mark: 17 / 17
+
+---
+
+## Total Mark
+83.5 / 92
