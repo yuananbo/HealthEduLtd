@@ -60,6 +60,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(bodyParser.json());
 
+// Public health endpoint for uptime/canary checks (no auth required).
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // app.get("/", (req, res) => res.send("Welcome to MOBIREHAB API"));
 
 // Patient security endpoints registered on the app first so they always match
