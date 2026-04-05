@@ -59,11 +59,13 @@ jobs:
       - name: Health check - Backend
         run: |
           echo "Running health check on canary backend..."
+          BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
+          echo "Backend host: ${BACKEND_HOST}"
           MAX_RETRIES=10
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://Mobirehab.azurewebsites.net/api/health || echo "000")
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/api/health" || echo "000")
             
             if [ "$RESPONSE" = "200" ]; then
               echo "✅ Health check passed! Backend is healthy."
@@ -81,8 +83,9 @@ jobs:
       - name: Performance check - Backend
         run: |
           echo "Running performance check..."
+          BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
           START=$(date +%s%N)
-          curl -s https://Mobirehab.azurewebsites.net/api/health > /dev/null
+          curl -s "https://${BACKEND_HOST}/api/health" > /dev/null
           END=$(date +%s%N)
           
           DURATION=$((($END - $START) / 1000000))
@@ -133,7 +136,9 @@ jobs:
       - name: Health check - Frontend
         run: |
           echo "Running health check on canary frontend..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://c01mobirehab.azurewebsites.net/ || echo "000")
+          FRONTEND_HOST=$(az webapp show --name c01mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
+          echo "Frontend host: ${FRONTEND_HOST}"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_HOST}/" || echo "000")
           
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ Frontend health check passed!"
@@ -192,8 +197,10 @@ jobs:
         run: |
           echo "Verifying production deployment..."
           sleep 30
+          BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
+          echo "Backend host: ${BACKEND_HOST}"
           
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://Mobirehab.azurewebsites.net/api/health || echo "000")
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/api/health" || echo "000")
           
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ Production deployment verified successfully!"
@@ -231,6 +238,5 @@ jobs:
           echo "Canary deployment or health checks failed"
           echo "Please check the logs above for details"
           exit 1
-
 
 
