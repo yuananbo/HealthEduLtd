@@ -199,11 +199,24 @@ jobs:
           mkdir -p backend-logs frontend-logs
           unzip -oq backend-logs.zip -d backend-logs
           unzip -oq frontend-logs.zip -d frontend-logs
-          if grep -R -E -i "error|exception|panic|fatal|traceback" backend-logs frontend-logs > /dev/null; then
+          MATCHES=$(grep -R -n -E -i "error|exception|panic|fatal|traceback" backend-logs frontend-logs || true)
+          if [ -n "$MATCHES" ]; then
             echo "❌ Error patterns found in canary logs"
+            echo "$MATCHES" | head -n 150
             exit 1
           fi
           echo "✅ Error-free logs check passed (short interval)"
+
+      - name: Upload canary logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-logs
+          path: |
+            backend-logs.zip
+            frontend-logs.zip
+            backend-logs
+            frontend-logs
 
   promote-to-production:
     needs: [check-ci-success, canary-analysis]
