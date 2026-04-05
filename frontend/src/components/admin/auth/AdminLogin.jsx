@@ -5,8 +5,7 @@ import { loginFields } from "../../../constants/formFields";
 import toast from "react-hot-toast";
 import { UserContext } from "../../../context/UserContext";
 import FormAction from "../../common/forms/FormAction";
-import axios from "axios";
-import { adminBaseURL } from "../../../utils/adminApi";
+import { login } from "../../../services/AuthServices";
 import { motion } from "framer-motion";
 import { FaUserShield } from "react-icons/fa";
 
@@ -27,24 +26,7 @@ export default function AdminLogin() {
   };
 
   const loginAdmin = async (email, password) => {
-    try {
-      const response = await axios.post(
-        `${adminBaseURL}/login`,
-        { email, password },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      const token = response.data.token;
-      if (token) {
-        localStorage.setItem("user", JSON.stringify(response.data));
-      } else {
-        throw new Error("User not found or Invalid credentials");
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    return login(email, password, "/api/admin/login");
   };
 
   const handleSubmit = async (e) => {
@@ -60,7 +42,7 @@ export default function AdminLogin() {
       toast.success("Logged in successfully");
       navigate("/admin/", { replace: true });
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "";
+      const errorMessage = error.response?.data?.message || error.message || "";
       const shouldShowLockoutMessage =
         errorMessage.includes("Too many failed attempts") ||
         errorMessage.includes("Account is locked");
