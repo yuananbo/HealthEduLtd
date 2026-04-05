@@ -5,7 +5,7 @@ const deriveAzureBackendUrl = () => {
     return null;
   }
 
-  const { origin, protocol, hostname } = window.location;
+  const { protocol, hostname } = window.location;
 
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return `${protocol}//${hostname}:8000`;
