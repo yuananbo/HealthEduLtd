@@ -65,11 +65,7 @@ jobs:
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-<<<<<<< HEAD
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/api/health" || echo "000")
-=======
             RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/health" || echo "000")
->>>>>>> 1a145c5 (adding new health endpoint to server)
             
             if [ "$RESPONSE" = "200" ]; then
               echo "✅ Health check passed! Backend is healthy."
@@ -89,11 +85,7 @@ jobs:
           echo "Running performance check..."
           BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
           START=$(date +%s%N)
-<<<<<<< HEAD
-          curl -s "https://${BACKEND_HOST}/api/health" > /dev/null
-=======
           curl -s "https://${BACKEND_HOST}/health" > /dev/null
->>>>>>> 1a145c5 (adding new health endpoint to server)
           END=$(date +%s%N)
           
           DURATION=$((($END - $START) / 1000000))
@@ -208,11 +200,7 @@ jobs:
           BACKEND_HOST=$(az webapp show --name Mobirehab --resource-group Mobirehab_group --query defaultHostName -o tsv)
           echo "Backend host: ${BACKEND_HOST}"
           
-<<<<<<< HEAD
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/api/health" || echo "000")
-=======
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_HOST}/health" || echo "000")
->>>>>>> 1a145c5 (adding new health endpoint to server)
           
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ Production deployment verified successfully!"
