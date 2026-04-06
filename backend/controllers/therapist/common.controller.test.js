@@ -68,10 +68,42 @@ describe("therapist common controller", () => {
       "therapist-1",
       "appointment-1",
       4,
-      "Helpful"
+      "Helpful",
+      false
     );
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({ success: "success", rating: created });
+  });
+
+  it("addRating forwards isAnonymous to the service", async () => {
+    const created = { _id: "r-2", rating: 5, review: "", isAnonymous: true };
+    addTherapistRatingMock.mockResolvedValue(created);
+
+    const { addRating } = await import("./common.controller.js");
+
+    const req = {
+      params: { id: "therapist-1" },
+      user: { _id: "patient-1" },
+      body: {
+        appointmentId: "appointment-1",
+        rating: 5,
+        review: "",
+        isAnonymous: true,
+      },
+    };
+    const res = { json: vi.fn(), status: vi.fn().mockReturnThis() };
+
+    await addRating(req, res);
+
+    expect(addTherapistRatingMock).toHaveBeenCalledWith(
+      "patient-1",
+      "therapist-1",
+      "appointment-1",
+      5,
+      "",
+      true
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 
   it("addRating returns 500 when rating creation fails", async () => {

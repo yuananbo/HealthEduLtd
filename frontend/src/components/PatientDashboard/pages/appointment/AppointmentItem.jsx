@@ -80,12 +80,16 @@ const AppointmentItem = ({ appointment, isSelected, onSelect }) => {
               ? "bg-yellow-100 text-yellow-800"
               : appointment.status === "Waiting for Payment"
               ? "bg-orange-100 text-orange-800"
-              : appointment.status === "Confirmed" ||
-                  appointment.status === "Accepted"
-                ? "bg-green-100 text-green-800"
-                : appointment.status === "Cancelled"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
+              : appointment.status === "Accepted"
+              ? "bg-green-100 text-green-800"
+              : appointment.status === "Completed"
+              ? "bg-blue-100 text-blue-800"
+              : appointment.status === "Rescheduled"
+              ? "bg-purple-100 text-purple-800"
+              : appointment.status === "Cancelled" ||
+                appointment.status === "Declined"
+              ? "bg-red-100 text-red-800"
+              : "bg-gray-100 text-gray-800"
           }`}
         >
           {appointment.status}

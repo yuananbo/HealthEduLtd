@@ -10,6 +10,17 @@ import Appointment from "../../models/appointment.model.js";
 import Payment from "../../models/payment.model.js";
 import DailyCheckIn from "../../models/dailyCheckIn.model.js";
 import mongoose from "mongoose";
+import fs from "fs/promises";
+import path from "path";
+import { cloudinary } from "../../utils/cloudinary.js";
+
+const localProfileFilenameFromUrl = (profilePictureUrl) => {
+  if (!profilePictureUrl || typeof profilePictureUrl !== "string") return null;
+  if (!profilePictureUrl.includes("/uploads/")) return null;
+  const part = profilePictureUrl.split("/uploads/")[1];
+  if (!part) return null;
+  return decodeURIComponent(part.split("?")[0]);
+};
 
 const mapCheckInHistory = (checkIns = []) =>
   checkIns.map((checkIn) => ({
@@ -44,6 +55,7 @@ const createSendToken = (user, statusCode, res) => {
 
 export const signupTherapist = async (req, res) => {
   try {
+    const isDevelopment = process.env.NODE_ENV === "development";
     const {
       firstName,
       lastName,
@@ -122,12 +134,22 @@ export const signupTherapist = async (req, res) => {
       specialization,
       password,
       profilePicture: uploadResults[0].secure_url,
+      cloudinaryId: uploadResults[0].public_id,
       cv: uploadResults[1].secure_url,
       licenseDocument: uploadResults[2].secure_url,
-      active: false,
+      active: isDevelopment ? true : false,
+      isVerified: isDevelopment ? true : false,
       otp: null,
       otpExpires: null,
     });
+
+    if (isDevelopment) {
+      return res.status(201).json({
+        status: "success",
+        message: "Account created (development mode: auto-verified).",
+        user: newTherapist,
+      });
+    }
 
     // Generate OTP
     const otp = await newTherapist.createOTP();
@@ -299,7 +321,7 @@ export const updateTherapistProfile = asyncHandler(async (req, res) => {
   const therapist = await Therapist.findById(req.user._id);
 
   if (!therapist) {
-    res.status(404).json({ message: "Therapist not found" });
+    return res.status(404).json({ message: "Therapist not found" });
   }
 
   const updatableFields = [
@@ -322,12 +344,21 @@ export const updateTherapistProfile = asyncHandler(async (req, res) => {
     }
   });
 
-  // Handle nested address field
-  if (req.body.address) {
-    updates.address = {
-      ...therapist.address,
-      ...req.body.address,
-    };
+  let addressPayload = req.body.address;
+  if (typeof addressPayload === "string") {
+    try {
+      addressPayload = JSON.parse(addressPayload);
+    } catch {
+      addressPayload = undefined;
+    }
+  }
+  if (addressPayload && typeof addressPayload === "object") {
+    const rawAddr = therapist.address;
+    const addrPlain =
+      rawAddr && typeof rawAddr.toObject === "function"
+        ? rawAddr.toObject()
+        : { ...(rawAddr || {}) };
+    updates.address = { ...addrPlain, ...addressPayload };
   }
 
   // Validate specialization if provided
@@ -337,13 +368,39 @@ export const updateTherapistProfile = asyncHandler(async (req, res) => {
       .path("specialization")
       .enumValues.includes(updates.specialization)
   ) {
-    res.status(400).json({ message: "Invalid specialization" });
+    return res.status(400).json({ message: "Invalid specialization" });
   }
 
   Object.assign(therapist, updates);
 
-  //   console.log('Received data:', req.body);
-  // console.log('Updates to be applied:', updates);
+  const profileFile = req.files?.profilePicture?.[0];
+  if (profileFile?.path) {
+    const uploadsDir = path.join(process.cwd(), "backend", "uploads");
+    const newBasename = path.basename(profileFile.path);
+
+    if (therapist.cloudinaryId) {
+      try {
+        await cloudinary.uploader.destroy(therapist.cloudinaryId);
+      } catch (destroyErr) {
+        console.warn("Could not remove previous Cloudinary profile image:", destroyErr);
+      }
+      therapist.cloudinaryId = undefined;
+    }
+
+    const previousLocalName = localProfileFilenameFromUrl(therapist.profilePicture);
+    if (previousLocalName && previousLocalName !== newBasename) {
+      try {
+        await fs.unlink(path.join(uploadsDir, previousLocalName));
+      } catch (unlinkErr) {
+        console.warn("Could not remove previous local profile image:", unlinkErr);
+      }
+    }
+
+    const localUrl = `${req.protocol}://${req.get("host")}/uploads/${encodeURIComponent(
+      newBasename
+    )}`;
+    therapist.profilePicture = localUrl;
+  }
 
   const updatedTherapist = await therapist.save();
 

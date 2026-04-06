@@ -107,6 +107,11 @@ const patientSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** Stored preference only; app does not send OTP codes yet. */
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
     lastLogin: {
       type: Date,
     },

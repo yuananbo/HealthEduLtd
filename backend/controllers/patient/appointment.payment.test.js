@@ -19,6 +19,10 @@ vi.mock("../../services/appointment.service.js", () => ({
     rescheduleAppointment: vi.fn(),
     cancelAppointment: vi.fn(),
     getAppointmentById: vi.fn(),
+    updateStatusWithHistory: vi.fn(async (appointment, update) => {
+      appointment.status = update.status;
+      return appointment;
+    }),
   },
 }));
 

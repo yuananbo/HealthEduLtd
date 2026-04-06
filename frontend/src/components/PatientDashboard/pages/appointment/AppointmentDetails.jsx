@@ -43,6 +43,7 @@ const AppointmentDetails = () => {
   const [notes, setNotes] = useState("");
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const [submitAnonymously, setSubmitAnonymously] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [existingReview, setExistingReview] = useState(null);
   const [ratingsLoading, setRatingsLoading] = useState(false);
@@ -85,6 +86,9 @@ const AppointmentDetails = () => {
         if (matchedReview) {
           setReviewRating(Number(matchedReview.rating) || 0);
           setReviewText(matchedReview.review || "");
+          setSubmitAnonymously(Boolean(matchedReview.isAnonymous));
+        } else {
+          setSubmitAnonymously(false);
         }
       } catch (fetchError) {
         console.error("Error fetching therapist ratings:", fetchError);
@@ -94,7 +98,12 @@ const AppointmentDetails = () => {
     };
 
     fetchExistingReview();
-  }, [appointment?.data?.status, appointment?.data?.therapist, currentUser?.data?.user?._id]);
+  }, [
+    id,
+    appointment?.data?.status,
+    appointment?.data?.therapist,
+    currentUser?.data?.user?._id,
+  ]);
 
   if (appointmentLoading || loading) {
     return <Loading />;
@@ -150,11 +159,13 @@ const AppointmentDetails = () => {
         appointmentId: id,
         rating: reviewRating,
         review: reviewText.trim(),
+        isAnonymous: submitAnonymously,
       });
 
       setExistingReview(response?.data?.rating || {
         rating: reviewRating,
         review: reviewText.trim(),
+        isAnonymous: submitAnonymously,
         createdAt: new Date().toISOString(),
       });
       toast.success("Thank you for your feedback");
@@ -522,6 +533,12 @@ const AppointmentDetails = () => {
                   <p className="text-xs text-gray-500">
                     Submitted: {new Date(existingReview?.createdAt || Date.now()).toLocaleDateString()}
                   </p>
+                  {existingReview?.isAnonymous ? (
+                    <p className="text-xs text-gray-600">
+                      You submitted this rating anonymously. Your name is not shown to the
+                      therapist.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -546,6 +563,18 @@ const AppointmentDetails = () => {
                     component="textarea"
                     placeholder="How was your experience with this therapist?"
                   />
+
+                  <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-greenPrimary focus:ring-greenPrimary"
+                      checked={submitAnonymously}
+                      onChange={(e) => setSubmitAnonymously(e.target.checked)}
+                    />
+                    <span>
+                      Submit anonymously — the therapist will not see your name on this review.
+                    </span>
+                  </label>
 
                   <div className="flex justify-end">
                     <Button

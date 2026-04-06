@@ -7,11 +7,19 @@ const ProfileSidebar = ({ activeTab, setActiveTab, therapist }) => {
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       <div className="p-6">
         <div className="text-center mb-8">
-          <img
-            src={therapist.profilePicture}
-            alt="Profile"
-            className="w-32 h-32 rounded-full mx-auto border-4 border-blue-500 shadow-lg"
-          />
+          {therapist.profilePicture &&
+          typeof therapist.profilePicture === "string" &&
+          therapist.profilePicture.trim() ? (
+            <img
+              src={therapist.profilePicture}
+              alt="Profile"
+              className="w-32 h-32 rounded-full mx-auto border-4 border-blue-500 object-cover shadow-lg"
+            />
+          ) : (
+            <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full border-4 border-blue-500 bg-blue-100 text-3xl font-bold text-blue-700 shadow-lg">
+              {therapist.firstName?.[0]?.toUpperCase() || "?"}
+            </div>
+          )}
           <h2 className="mt-4 text-2xl font-bold text-gray-800">
             {`${therapist.firstName} ${therapist.lastName}`}
           </h2>

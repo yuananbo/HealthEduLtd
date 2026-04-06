@@ -15,6 +15,12 @@ import bodyParser from "body-parser";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import swaggerOptions from "./utils/swaggerOptions.js";
+import validateToken from "./middleware/validateToken.js";
+import {
+  changePassword,
+  deletePatientAccount,
+  updatePatientTwoFactor,
+} from "./controllers/patient/patients.controller.js";
 import patientRoutes from "./routes/patient.routes.js";
 import therapistRoutes from "./routes/therapist.routes.js";
 import webhookRoutes from "./routes/webhook.routes.js";
@@ -47,6 +53,14 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 
 // app.get("/", (req, res) => res.send("Welcome to MOBIREHAB API"));
+
+// Patient security endpoints registered on the app first so they always match
+// (avoids 404 if the mounted router file on disk is stale or fails to bind).
+app.post("/api/v1/patient/change-password", validateToken, changePassword);
+app.patch("/api/v1/patient/change-password", validateToken, changePassword);
+app.post("/api/v1/patient/security/two-factor", validateToken, updatePatientTwoFactor);
+app.patch("/api/v1/patient/security/two-factor", validateToken, updatePatientTwoFactor);
+app.delete("/api/v1/patient/account", validateToken, deletePatientAccount);
 
 //PATIENT ROUTES
 app.use("/api/v1/patient", patientRoutes);

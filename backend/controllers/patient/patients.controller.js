@@ -1,6 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Patient from "../../models/patient.model.js";
+import Appointment from "../../models/appointment.model.js";
+import Payment from "../../models/payment.model.js";
+import QuestionnaireResult from "../../models/questionnaireResult.model.js";
+import DailyCheckIn from "../../models/dailyCheckIn.model.js";
+import TherapistRating from "../../models/therapistRating.model.js";
+import SessionNote from "../../models/sessionNotes.model.js";
 import generateToken from "../../utils/generateToken.js";
 import Therapist from "../../models/therapist.model.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -81,7 +87,21 @@ export const signupPatient = async (req, res) => {
         .json({ message: "Patient not created, Invalid patient data" });
     }
   } catch (error) {
-    console.log(error);
+    console.error("signupPatient:", error);
+    if (error?.name === "ValidationError") {
+      const msgs = Object.values(error.errors || {})
+        .map((e) => e.message)
+        .join(" ");
+      return res.status(400).json({
+        message: msgs || "Please check required fields (e.g. city, 8+ char password).",
+      });
+    }
+    if (error?.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0] || "field";
+      return res.status(400).json({
+        message: `That ${field} is already registered.`,
+      });
+    }
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -145,10 +165,26 @@ export const logoutPatient = (req, res) => {
 // Get all verified therapists
 export const getAllVerifiedTherapists = async (req, res) => {
   try {
-    const therapists = await Therapist.find({ isVerified: true }).select(
-      "-password"
-    );
-    res.json({ status: "success", count: therapists.length, data: therapists });
+    const therapists = await Therapist.find({ isVerified: true })
+      .select("-password")
+      .populate({ path: "ratings", select: "rating" });
+
+    const data = therapists.map((t) => {
+      const plain = t.toObject();
+      const ratingDocs = plain.ratings || [];
+      const avg = ratingDocs.length
+        ? ratingDocs.reduce((sum, r) => sum + (r.rating || 0), 0) /
+          ratingDocs.length
+        : 0;
+      delete plain.ratings;
+      return {
+        ...plain,
+        averageRating: Math.round(avg * 10) / 10,
+        reviewCount: ratingDocs.length,
+      };
+    });
+
+    res.json({ status: "success", count: data.length, data });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -398,7 +434,24 @@ export const resetPassword = async (req, res) => {
 
 export const changePassword = async (req, res) => {
   try {
+    if (!req.user || req.user.userType !== "patient") {
+      return res.status(403).json({
+        message:
+          "This endpoint is for patient accounts only. If you are a therapist, use the therapist profile security settings.",
+      });
+    }
+
     const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "All password fields are required" });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res
+        .status(400)
+        .json({ message: "New password must be at least 8 characters" });
+    }
 
     // Check if the new password matches the confirm password
     if (newPassword !== confirmPassword) {
@@ -409,7 +462,10 @@ export const changePassword = async (req, res) => {
     const patient = await Patient.findById(patientId);
 
     if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({
+        message:
+          "Patient record not found for this account. Try logging out and logging in again, or check that your app is using the same API URL and database as when you signed up.",
+      });
     }
 
     // Check if the old password is correct
@@ -435,6 +491,89 @@ export const changePassword = async (req, res) => {
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     console.error("Error changing password:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updatePatientTwoFactor = async (req, res) => {
+  try {
+    if (!req.user || req.user.userType !== "patient") {
+      return res.status(403).json({ message: "This endpoint is for patient accounts only." });
+    }
+
+    const { enabled } = req.body;
+    if (typeof enabled !== "boolean") {
+      return res
+        .status(400)
+        .json({ message: "Body must include enabled: true or false" });
+    }
+
+    const patient = await Patient.findByIdAndUpdate(
+      req.user._id,
+      { $set: { twoFactorEnabled: enabled } },
+      { new: true }
+    ).select("-password");
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    res.status(200).json({
+      message: enabled
+        ? "Two-factor preference enabled (no OTP is sent yet)"
+        : "Two-factor preference disabled",
+      patient,
+    });
+  } catch (error) {
+    console.error("Error updating 2FA preference:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const deletePatientAccount = async (req, res) => {
+  try {
+    if (!req.user || req.user.userType !== "patient") {
+      return res.status(403).json({ message: "This endpoint is for patient accounts only." });
+    }
+
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ message: "Password is required to delete your account" });
+    }
+
+    const patientId = req.user._id;
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    const ok = await bcrypt.compare(password, patient.password);
+    if (!ok) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const appointments = await Appointment.find({ patient: patientId });
+    const appointmentIds = appointments.map((a) => a._id);
+    const sessionNoteIds = appointments.flatMap((a) =>
+      Array.isArray(a.sessionNotes) ? a.sessionNotes : []
+    );
+    if (sessionNoteIds.length > 0) {
+      await SessionNote.deleteMany({ _id: { $in: sessionNoteIds } });
+    }
+    if (appointmentIds.length > 0) {
+      await Payment.deleteMany({ appointment: { $in: appointmentIds } });
+    }
+    await Appointment.deleteMany({ patient: patientId });
+    await QuestionnaireResult.deleteMany({ patient: patientId });
+    await DailyCheckIn.deleteMany({ patient: patientId });
+    await TherapistRating.deleteMany({ patient: patientId });
+
+    await Patient.findByIdAndDelete(patientId);
+
+    res.clearCookie("jwt", "", { maxAge: 0 });
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting patient account:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

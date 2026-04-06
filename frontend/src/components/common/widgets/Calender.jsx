@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import { coerceApiDateToYmd, ymdToLocalDate } from "../../../utils/availabilityDate";
 
 const AvailabilityDayPicker = ({ availabilities, onDateClick }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -21,13 +22,10 @@ const AvailabilityDayPicker = ({ availabilities, onDateClick }) => {
         (availability?.times || []).some((t) => Boolean(t?.isActive))
       )
       .map((availability) => {
-        // availability.date is expected to be YYYY-MM-DD (date-only)
-        if (typeof availability?.date === "string") {
-          const [y, m, d] = availability.date.split("-").map(Number);
-          if (y && m && d) return new Date(y, m - 1, d);
-        }
-        return new Date(availability.date);
-      });
+        const ymd = coerceApiDateToYmd(availability?.date);
+        return ymdToLocalDate(ymd);
+      })
+      .filter(Boolean);
     setAvailableDates(dates);
   }, [availabilities]);
 

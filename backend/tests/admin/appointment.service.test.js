@@ -67,7 +67,31 @@ test("updateAppointmentStatus rejects completing a non-accepted appointment", as
       }),
     (error) => {
       assert.equal(error.status, 400);
-      assert.match(error.message, /Only accepted appointments/);
+      assert.match(
+        error.message,
+        /Cannot transition appointment from "Pending" to "Completed"/
+      );
+      return true;
+    }
+  );
+});
+
+test("updateAppointmentStatus rejects invalid status regressions", async () => {
+  const appointment = createAppointmentDouble({ status: "Declined" });
+  Appointment.findById = async () => appointment;
+
+  await assert.rejects(
+    () =>
+      AppointmentService.updateAppointmentStatus("appointment-1", "Accepted", {
+        user: { _id: "therapist-1", userType: "therapist" },
+        body: {},
+      }),
+    (error) => {
+      assert.equal(error.status, 400);
+      assert.match(
+        error.message,
+        /Cannot transition appointment from "Declined" to "Accepted"/
+      );
       return true;
     }
   );

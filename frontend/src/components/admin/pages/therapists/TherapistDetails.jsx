@@ -100,10 +100,10 @@ const TherapistDetails = () => {
   };
 
   useEffect(() => {
-    if (currentUser && currentUser.token) {
+    if (currentUser?.token) {
       getTherapist();
     }
-  }, [currentUser.token]);
+  }, [currentUser?.token]);
 
   if (loading) {
     return <Loading />;
