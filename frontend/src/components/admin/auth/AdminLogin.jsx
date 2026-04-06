@@ -1,11 +1,12 @@
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import Input from "../../common/forms/Input";
 import { loginFields } from "../../../constants/formFields";
 import toast from "react-hot-toast";
 import { UserContext } from "../../../context/UserContext";
 import FormAction from "../../common/forms/FormAction";
-import { login } from "../../../services/AuthServices";
+import { adminBaseURL } from "../../../utils/adminApi";
 import { motion } from "framer-motion";
 import { FaUserShield } from "react-icons/fa";
 
@@ -36,26 +37,30 @@ export default function AdminLogin() {
     setLoginState({ ...loginState, [e.target.id]: e.target.value });
   };
 
-  const loginAdmin = async (email, password) => {
-    return login(email, password, "/api/admin/login");
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const userData = await loginAdmin(
-        loginState["email-address"],
-        loginState["password"]
+      const response = await axios.post(
+        `${adminBaseURL}/login`,
+        {
+          email: loginState["email-address"],
+          password: loginState["password"],
+        },
+        { withCredentials: true }
       );
-      if (!userData?.token) {
+
+      const { token } = response.data;
+      if (!token) {
         toast.error(
           "Could not sign in (server unavailable). Please try again later."
         );
         return;
       }
-      setCurrentUser(userData);
+
+      localStorage.setItem("user", JSON.stringify(response.data));
+      setCurrentUser(response.data);
       toast.success("Logged in successfully");
       navigate("/admin/", { replace: true });
     } catch (error) {
