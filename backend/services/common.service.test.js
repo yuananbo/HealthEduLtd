@@ -169,4 +169,100 @@ describe("CommonService", () => {
       statusCode: 409,
     });
   });
+
+  it("addTherapistRating rejects when the appointment does not exist", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue(null),
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-missing",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "Appointment not found",
+      statusCode: 404,
+    });
+  });
+
+  it("addTherapistRating rejects when a patient tries to rate another patient's appointment", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-2",
+        therapist: "therapist-1",
+        status: "Completed",
+      }),
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-1",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "You can only rate your own completed appointments",
+      statusCode: 403,
+    });
+  });
+
+  it("addTherapistRating rejects when the appointment belongs to a different therapist", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-2",
+        status: "Completed",
+      }),
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-1",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "This appointment does not belong to the selected therapist",
+      statusCode: 400,
+    });
+  });
+
+  it("addTherapistRating rejects when the appointment is not completed", async () => {
+    findByIdAppointmentMock.mockReturnValue({
+      select: vi.fn().mockResolvedValue({
+        patient: "patient-1",
+        therapist: "therapist-1",
+        status: "Accepted",
+      }),
+    });
+
+    const { default: CommonService } = await import("./common.service.js");
+
+    await expect(
+      CommonService.addTherapistRating(
+        "patient-1",
+        "therapist-1",
+        "appointment-1",
+        5,
+        "Excellent care"
+      )
+    ).rejects.toMatchObject({
+      message: "Only completed appointments can be rated",
+      statusCode: 400,
+    });
+  });
 });
