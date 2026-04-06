@@ -186,11 +186,8 @@ class AdminService {
         throw new Error("Therapist account is already approved");
       }
 
-      if (therapist.active === false) {
-        throw new Error(
-          "This therapist haven't verified their email yet. Account can't be approved"
-        );
-      }
+      // Email verification may still be pending (active === false). Admin approval activates
+      // the account so therapists are not blocked when OTP/email is skipped or not completed.
 
       // check that therapist has uploaded all required documents
       if (
@@ -201,6 +198,7 @@ class AdminService {
         throw new Error("Therapist has not uploaded all required documents");
       }
 
+      therapist.active = true;
       therapist.isVerified = true;
       await therapist.save();
 
