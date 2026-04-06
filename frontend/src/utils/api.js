@@ -20,9 +20,17 @@ const isTokenExpired = (token) => {
   }
 };
 
+const isPublicAuthPath = (url = "") =>
+  /\/(login|signup|register)(\?|#|$)/i.test(url) ||
+  /\/setup\/create-super-admin\b/i.test(url);
+
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    const url = config.url || "";
+    if (isPublicAuthPath(url)) {
+      return config;
+    }
     const user = JSON.parse(localStorage.getItem("user"));
     if (user && user.token) {
       if (isTokenExpired(user.token)) {
@@ -41,8 +49,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Token is invalid or expired
+    const url = error.config?.url || "";
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !isPublicAuthPath(url)
+    ) {
       localStorage.removeItem("user");
       window.location.href = "/welcome";
     }

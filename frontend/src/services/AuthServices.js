@@ -1,5 +1,17 @@
 import api from "../utils/api";
-import {jwtDecode} from 'jwt-decode';
+import { getApiBaseUrl } from "../utils/getApiBaseUrl";
+import { jwtDecode } from "jwt-decode";
+
+/** Backend mounts admin under `/api/admin`, not `/api/v1` — avoid broken URLs like `/api/v1/api/admin/...`. */
+const resolveAuthRequestUrl = (API_ENDPOINT) => {
+  if (/^https?:\/\//i.test(API_ENDPOINT)) {
+    return API_ENDPOINT;
+  }
+  if (API_ENDPOINT.startsWith("/api/admin")) {
+    return `${getApiBaseUrl()}${API_ENDPOINT}`;
+  }
+  return API_ENDPOINT;
+};
 
 // export const login = async (email, password, API_ENDPOINT) => {
 //   try {
@@ -29,7 +41,8 @@ import {jwtDecode} from 'jwt-decode';
 
 export const login = async (email, password, API_ENDPOINT) => {
   try {
-    const response = await api.post(API_ENDPOINT, {
+    const url = resolveAuthRequestUrl(API_ENDPOINT);
+    const response = await api.post(url, {
       email,
       password,
     });

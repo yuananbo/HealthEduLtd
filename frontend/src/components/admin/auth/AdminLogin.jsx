@@ -10,13 +10,24 @@ import { motion } from "framer-motion";
 import { FaUserShield } from "react-icons/fa";
 
 const fields = loginFields;
-let fieldsState = {};
-fields.forEach((field) => (fieldsState[field.id] = ""));
+const buildInitialState = () => {
+  const state = {};
+  fields.forEach((field) => {
+    state[field.id] = "";
+  });
+  if (import.meta.env.DEV) {
+    state["email-address"] = import.meta.env.VITE_ADMIN_DEV_EMAIL ?? "";
+    state.password = import.meta.env.VITE_ADMIN_DEV_PASSWORD ?? "";
+  }
+  return state;
+};
 
 const LOCKOUT_MESSAGE = "连续五次不成功就锁30分钟";
+const INVALID_CREDENTIALS_MESSAGE =
+  "Incorrect email or password. Please try again.";
 
 export default function AdminLogin() {
-  const [loginState, setLoginState] = useState(fieldsState);
+  const [loginState, setLoginState] = useState(buildInitialState);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setCurrentUser } = useContext(UserContext);
@@ -38,19 +49,33 @@ export default function AdminLogin() {
         loginState["email-address"],
         loginState["password"]
       );
+      if (!userData?.token) {
+        toast.error(
+          "Could not sign in (server unavailable). Please try again later."
+        );
+        return;
+      }
       setCurrentUser(userData);
       toast.success("Logged in successfully");
       navigate("/admin/", { replace: true });
     } catch (error) {
+      const status = error.response?.status;
       const errorMessage = error.response?.data?.message || error.message || "";
       const shouldShowLockoutMessage =
         errorMessage.includes("Too many failed attempts") ||
         errorMessage.includes("Account is locked");
+      const looksLikeBadCredentials =
+        status === 400 ||
+        /invalid login credentials|admin not found|check your email and password/i.test(
+          errorMessage
+        );
 
       toast.error(
         shouldShowLockoutMessage
           ? LOCKOUT_MESSAGE
-          : errorMessage || "An error occurred. Please try again later."
+          : looksLikeBadCredentials
+            ? INVALID_CREDENTIALS_MESSAGE
+            : errorMessage || "An error occurred. Please try again later."
       );
     } finally {
       setLoading(false);
