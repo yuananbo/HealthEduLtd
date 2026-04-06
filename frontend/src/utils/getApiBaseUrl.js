@@ -1,36 +1,31 @@
 const stripTrailingSlash = (value) => value.replace(/\/+$/, "");
 
-const deriveAzureBackendUrl = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const { protocol, hostname } = window.location;
-
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${protocol}//${hostname}:8000`;
-  }
-
-  // Same Azure Web App serves API + static build — use this origin (HTTPS).
-  // Do not return ""; it is falsy and would fall through to http://localhost:8000
-  // (mixed content: Safari/Chrome block HTTPS pages from calling http://localhost).
-  if (hostname.endsWith(".azurewebsites.net")) {
-    return `${protocol}//${hostname}`;
-  }
-
-  return null;
-};
-
+/**
+ * API base origin (no path).
+ *
+ * - Local dev: browser on localhost → backend at :8000.
+ * - Deployed (build + Azure/custom domain): same origin only — `/api` is proxied by nginx.
+ *   Never falls back to localhost:8000 after deploy.
+ */
 export const getApiBaseUrl = () => {
   const envBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-
   if (envBaseUrl) {
     return stripTrailingSlash(envBaseUrl);
   }
 
-  const derivedUrl = deriveAzureBackendUrl();
-  if (derivedUrl) {
-    return stripTrailingSlash(derivedUrl);
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${protocol}//${hostname}:8000`;
+    }
+
+    return stripTrailingSlash(`${protocol}//${hostname}`);
+  }
+
+  // No window (tests/SSR): production build must not assume localhost
+  if (import.meta.env.PROD) {
+    return "";
   }
 
   return "http://localhost:8000";
