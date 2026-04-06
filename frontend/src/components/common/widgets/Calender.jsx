@@ -16,10 +16,16 @@ const AvailabilityDayPicker = ({ availabilities, onDateClick }) => {
   };
 
   useEffect(() => {
-    // Only mark a day as available if it has at least one active slot.
+    const slotCountsAsAvailable = (t) => {
+      if (typeof t === "string") return String(t).trim() !== "";
+      if (t == null) return false;
+      if (t.isActive === false) return false;
+      return String(t.time ?? "").trim() !== "";
+    };
+
     const dates = (availabilities || [])
       .filter((availability) =>
-        (availability?.times || []).some((t) => Boolean(t?.isActive))
+        (availability?.times || []).some(slotCountsAsAvailable)
       )
       .map((availability) => {
         const ymd = coerceApiDateToYmd(availability?.date);

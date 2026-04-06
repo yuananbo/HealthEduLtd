@@ -5,11 +5,12 @@ import { describe, it, expect, afterEach, beforeAll, vi } from "vitest";
  */
 describe("isMockPayment", () => {
   let isMockPayment;
+  let isConsultationPaymentMocked;
 
   beforeAll(async () => {
     vi.stubEnv("FLW_PUBLIC_KEY", "FLWPUBK_TEST-fake-for-vitest");
     vi.stubEnv("FLW_SECRET_KEY", "FLWSECK_TEST-fake-for-vitest");
-    ({ isMockPayment } = await import("./payment.js"));
+    ({ isMockPayment, isConsultationPaymentMocked } = await import("./payment.js"));
   });
 
   afterEach(() => {
@@ -34,5 +35,48 @@ describe("isMockPayment", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("USE_REAL_PAYMENT", "false");
     expect(isMockPayment()).toBe(false);
+  });
+
+  it("isConsultationPaymentMocked is true in production when MOCK_CONSULTATION_PAYMENT is true", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("USE_REAL_PAYMENT", "false");
+    vi.stubEnv("MOCK_CONSULTATION_PAYMENT", "true");
+    expect(isConsultationPaymentMocked()).toBe(true);
+  });
+
+  it("isConsultationPaymentMocked is true when MOCK is unset even in production with FLW keys", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("USE_REAL_PAYMENT", "false");
+    vi.stubEnv("FLW_PUBLIC_KEY", "FLWPUBK_TEST-fake-for-vitest");
+    vi.stubEnv("FLW_SECRET_KEY", "FLWSECK_TEST-fake-for-vitest");
+    expect(isConsultationPaymentMocked()).toBe(true);
+  });
+
+  it("isConsultationPaymentMocked follows isMockPayment when MOCK is false and FLW keys exist", () => {
+    vi.stubEnv("MOCK_CONSULTATION_PAYMENT", "false");
+    vi.stubEnv("FLW_PUBLIC_KEY", "FLWPUBK_TEST-fake-for-vitest");
+    vi.stubEnv("FLW_SECRET_KEY", "FLWSECK_TEST-fake-for-vitest");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("USE_REAL_PAYMENT", "false");
+    expect(isConsultationPaymentMocked()).toBe(false);
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("USE_REAL_PAYMENT", "false");
+    expect(isConsultationPaymentMocked()).toBe(true);
+  });
+
+  it("isConsultationPaymentMocked is true in production when Flutterwave keys are missing", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("USE_REAL_PAYMENT", "false");
+    vi.stubEnv("FLW_PUBLIC_KEY", "");
+    vi.stubEnv("FLW_SECRET_KEY", "");
+    expect(isConsultationPaymentMocked()).toBe(true);
+  });
+
+  it("isConsultationPaymentMocked stays true when MOCK is false but FLW keys are missing", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MOCK_CONSULTATION_PAYMENT", "false");
+    vi.stubEnv("FLW_PUBLIC_KEY", "");
+    vi.stubEnv("FLW_SECRET_KEY", "");
+    expect(isConsultationPaymentMocked()).toBe(true);
   });
 });

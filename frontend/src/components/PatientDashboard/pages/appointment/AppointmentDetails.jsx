@@ -7,7 +7,6 @@ import {
   FiCheckSquare,
   FiMessageSquare,
   FiMapPin,
-  FiMessageCircle,
 } from "react-icons/fi";
 import useAppointmentDetailsPatient from "../../../../hooks/useAppointmentDetailsPatient";
 import useTherapistDetails from "../../../../hooks/useTherapistDetails";
@@ -131,11 +130,6 @@ const AppointmentDetails = () => {
     // Implement save notes logic
     console.log("Notes saved:", notes);
     setShowNotes(false);
-  };
-
-  const handleStartChat = () => {
-    // Implement chat logic
-    console.log("Starting chat with therapist");
   };
 
   const handleSubmitReview = async () => {
@@ -474,18 +468,6 @@ const AppointmentDetails = () => {
                     <FiEdit3 className="mr-1" /> Add Notes
                   </button>
                 )}
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Message Therapist
-                </h3>
-                <button
-                  onClick={handleStartChat}
-                  className="flex items-center bg-greenPrimary hover:bg-hoverColor text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
-                >
-                  <FiMessageCircle className="mr-2" /> Start Chat
-                </button>
               </div>
             </div>
           )}

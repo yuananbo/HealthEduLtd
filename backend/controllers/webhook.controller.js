@@ -51,7 +51,10 @@ export const handleFlutterwaveWebhook = async (req, res) => {
         response.currency === currency &&
         response.tx_ref === tx_ref
       ) {
-        const payment = await Payment.findOne({ appointment: appointmentId });
+        const payment = await Payment.findOne({
+          appointment: appointmentId,
+          purpose: "registration",
+        });
         if (payment) {
           payment.status = "success";
           payment.amount = amount;
@@ -137,7 +140,10 @@ export const handleFlutterwaveRedirect = async (req, res) => {
       ) {
         const appointmentId = txRef.split("-")[1];
         console.log(`Appointment ID: ${appointmentId}`);
-        const payment = await Payment.findOne({ appointment: appointmentId });
+        const payment = await Payment.findOne({
+          appointment: appointmentId,
+          purpose: "registration",
+        });
         if (payment) {
           payment.status = "success";
           payment.amount = amount;

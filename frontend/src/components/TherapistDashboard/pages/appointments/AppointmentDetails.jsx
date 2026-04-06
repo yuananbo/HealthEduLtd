@@ -197,7 +197,9 @@ const AppointmentDetails = () => {
         reason: reason,
         note: noteDetails,
       });
-      setNotes([...notes, response.data.data]);
+      const updated = response?.data?.data;
+      const sessionList = updated?.sessionNotes;
+      setNotes(Array.isArray(sessionList) ? sessionList : []);
       setReason("");
       setNoteDetails("");
       toast.success("Note added successfully");
@@ -682,7 +684,7 @@ const AppointmentDetails = () => {
               <ul className="mt-4">
                 {notes.map((note, index) => (
                   <li
-                    key={index}
+                    key={note?._id || `note-${index}`}
                     className="bg-white shadow overflow-hidden sm:rounded-lg mb-4 p-4"
                   >
                     <h4 className="text-md font-medium text-gray-900">

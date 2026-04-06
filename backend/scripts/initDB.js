@@ -72,8 +72,20 @@ const initDatabase = async () => {
     await Appointment.collection.createIndex({ patient: 1, therapist: 1, date: 1 });
     console.log("  ✓ Appointment indexes created");
 
-    // Payment indexes
-    await Payment.collection.createIndex({ appointment: 1 }, { unique: true });
+    // Payment indexes — compound unique so one row per (appointment + purpose);
+    // booking uses purpose=registration, post-visit uses consultation.
+    try {
+      await Payment.collection.dropIndex("appointment_1");
+    } catch (dropErr) {
+      const msg = String(dropErr?.message || dropErr);
+      if (!msg.includes("index not found") && dropErr?.code !== 27) {
+        console.warn("  (Payment) could not drop old appointment_1 index:", msg);
+      }
+    }
+    await Payment.collection.createIndex(
+      { appointment: 1, purpose: 1 },
+      { unique: true }
+    );
     await Payment.collection.createIndex({ status: 1 });
     console.log("  ✓ Payment indexes created");
 

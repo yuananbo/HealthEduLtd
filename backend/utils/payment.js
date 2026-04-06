@@ -28,6 +28,26 @@ export function isMockPayment() {
   return process.env.NODE_ENV !== "production";
 }
 
+/**
+ * Post-visit consultation fee is mocked by default so it still works when
+ * USE_REAL_PAYMENT=true (booking) or NODE_ENV=production without a working FLW flow.
+ * Set MOCK_CONSULTATION_PAYMENT=false and configure FLW to charge consultation for real.
+ */
+export function isConsultationPaymentMocked() {
+  if (process.env.MOCK_CONSULTATION_PAYMENT === "true") return true;
+
+  if (process.env.MOCK_CONSULTATION_PAYMENT === "false") {
+    const flwConfigured = Boolean(
+      String(process.env.FLW_PUBLIC_KEY || "").trim() &&
+        String(process.env.FLW_SECRET_KEY || "").trim()
+    );
+    if (!flwConfigured) return true;
+    return isMockPayment();
+  }
+
+  return true;
+}
+
 // Initialize Flutterwave with fallback for missing keys
 let flw = null;
 try {

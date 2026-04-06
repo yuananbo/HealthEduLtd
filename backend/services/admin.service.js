@@ -224,7 +224,19 @@ class AdminService {
         },
       };
 
-      const emailResponse = await sendEmail(accountApprovalEmailData);
+      let emailResponse;
+      try {
+        emailResponse = await sendEmail(accountApprovalEmailData);
+      } catch (emailErr) {
+        console.error(
+          "approveTherapistAccount: approval notification email failed (approval still saved)",
+          emailErr?.message || emailErr
+        );
+        emailResponse = {
+          skipped: true,
+          error: emailErr?.message || String(emailErr),
+        };
+      }
 
       return { therapist, emailResponse };
     } catch (error) {

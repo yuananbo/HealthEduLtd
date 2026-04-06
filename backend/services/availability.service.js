@@ -17,8 +17,39 @@
  */
 import moment from "moment";
 import Availability from "../models/availability.model.js";
+import Therapist from "../models/therapist.model.js";
 
 class AvailabilityService {
+  /**
+   * When a therapist has completed onboarding documents and has saved at least one
+   * calendar time slot, treat them as approved: same bar as admin approve (docs +
+   * schedule), without sending email here.
+   */
+  static async maybeActivateScheduledTherapist(therapistId) {
+    const therapist = await Therapist.findById(therapistId);
+    if (!therapist) return;
+
+    if (therapist.isVerified) return;
+
+    if (
+      !therapist.cv ||
+      !therapist.licenseDocument ||
+      !therapist.profilePicture
+    ) {
+      return;
+    }
+
+    const hasSlots = await Availability.exists({
+      therapist: therapistId,
+      "availabilities.times.0": { $exists: true },
+    });
+    if (!hasSlots) return;
+
+    therapist.active = true;
+    therapist.isVerified = true;
+    await therapist.save();
+  }
+
   /**
    * Calendar-day availability (no timezone drift). Prefer client "YYYY-MM-DD".
    */
@@ -48,6 +79,9 @@ class AvailabilityService {
       throw new Error("The availability name must be unique.");
     }
 
+    // Schedule-level isActive: patients only see slots in getActiveAvailability when
+    // this is true. Default schema is false, which forced "Activate All" after every
+    // create; new schedules should be bookable as soon as they are saved.
     const availability = new Availability({
       therapist: therapistId,
       availabilities: dates.map((date) => ({
@@ -55,9 +89,11 @@ class AvailabilityService {
         times: date.times.map((time) => ({ time, isActive: true })),
       })),
       availabilityName: availabilityName,
+      isActive: true,
     });
 
     await availability.save();
+    await this.maybeActivateScheduledTherapist(therapistId);
     return availability;
   }
 
@@ -316,14 +352,29 @@ class AvailabilityService {
       if (dates) {
         availability.availabilities = dates.map((date) => ({
           date: this.normalizeAvailabilityDayInput(date.date),
-          times: date.times.map((time) => ({
-            time: time.time,
-            isActive: time.isActive,
-          })),
+          times: (date.times || []).map((time) => {
+            if (typeof time === "string") {
+              return { time, isActive: true };
+            }
+            return {
+              time: time?.time,
+              isActive: time?.isActive !== false,
+            };
+          }),
         }));
+
+        const hasSlots = availability.availabilities.some((d) =>
+          (d.times || []).some(
+            (t) => t?.time && String(t.time).trim() !== ""
+          )
+        );
+        if (hasSlots) {
+          availability.isActive = true;
+        }
       }
 
       await availability.save();
+      await this.maybeActivateScheduledTherapist(therapistId);
       return availability;
     } catch (error) {
       console.error("Error updating availability:", error);
@@ -389,6 +440,7 @@ class AvailabilityService {
     updatedAvailability.isActive = true;
 
     await updatedAvailability.save();
+    await this.maybeActivateScheduledTherapist(therapistId);
 
     return updatedAvailability;
   }
@@ -413,6 +465,52 @@ class AvailabilityService {
     return updatedAvailability;
   }
 
+  /**
+   * Multiple schedule docs flatMap to several rows per calendar day. The patient
+   * calendar can mark a day green from one row while TimeSlots used .find() and
+   * picked another row with empty or fully-booked slots — dates lit up but no times.
+   */
+  static mergeAvailabilityDaysByUtcDate(dayRows) {
+    const byYmd = new Map();
+    for (const row of dayRows || []) {
+      if (!row?.date) continue;
+      const ymd = moment.utc(row.date).format("YYYY-MM-DD");
+      if (!byYmd.has(ymd)) {
+        byYmd.set(ymd, []);
+      }
+      byYmd.get(ymd).push(...(row.times || []));
+    }
+
+    const result = [];
+    for (const [ymd, allTimes] of byYmd) {
+      const slotMap = new Map();
+      for (const t of allTimes) {
+        const timeStr =
+          typeof t === "string"
+            ? this.normalizeTime(t)
+            : this.normalizeTime(t?.time);
+        if (!timeStr) continue;
+        const open =
+          typeof t === "string" ? true : t?.isActive !== false;
+        if (!slotMap.has(timeStr)) {
+          slotMap.set(timeStr, { time: timeStr, isActive: open });
+        } else {
+          const cur = slotMap.get(timeStr);
+          cur.isActive = cur.isActive || open;
+        }
+      }
+      result.push({
+        date: moment.utc(ymd, "YYYY-MM-DD", true).startOf("day").toDate(),
+        times: Array.from(slotMap.values()),
+      });
+    }
+
+    result.sort(
+      (a, b) => moment.utc(a.date).valueOf() - moment.utc(b.date).valueOf()
+    );
+    return result;
+  }
+
   static async getActiveAvailability(therapistId) {
     const activeAvailabilities = await Availability.find({
       therapist: therapistId,
@@ -423,16 +521,17 @@ class AvailabilityService {
       return null;
     }
 
-    // Merge all active availability documents into one payload expected by frontend.
-    const mergedAvailabilities = activeAvailabilities.flatMap(
+    const mergedDayRows = activeAvailabilities.flatMap(
       (item) => item.availabilities || []
     );
+    const availabilities =
+      this.mergeAvailabilityDaysByUtcDate(mergedDayRows);
 
     return {
       therapist: therapistId,
       isActive: true,
       availabilityIds: activeAvailabilities.map((item) => item._id),
-      availabilities: mergedAvailabilities,
+      availabilities,
     };
   }
 

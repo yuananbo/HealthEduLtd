@@ -976,21 +976,20 @@ export const approveTherapist = asyncHandler(async (req, res) => {
       throw new Error("Invalid therapist id");
     }
 
-    const updatedTherapist = await AdminService.approveTherapistAccount(
+    const { therapist, emailResponse } = await AdminService.approveTherapistAccount(
       adminId,
       therapistId,
       req
     );
 
-    // console.log(`Therapist approved successfully: ${updatedTherapist.email}`);
-
     res.status(200).json({
       success: true,
       message: "Therapist account approved successfully",
+      emailSent: !emailResponse?.skipped,
       data: {
-        therapistId: updatedTherapist._id,
-        email: updatedTherapist.email,
-        isVerified: updatedTherapist.isVerified,
+        therapistId: therapist._id,
+        email: therapist.email,
+        isVerified: therapist.isVerified,
       },
     });
   } catch (error) {

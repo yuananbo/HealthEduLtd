@@ -351,7 +351,7 @@ describe("Patient appointment details", () => {
     expect(screen.getByText("Book Appointment")).toBeTruthy();
   });
 
-  it("shows accepted-appointment notes and messaging actions", () => {
+  it("shows accepted-appointment notes", () => {
     useAppointmentDetailsPatient.mockReturnValue({
       loading: false,
       error: null,
@@ -364,8 +364,6 @@ describe("Patient appointment details", () => {
 
     expect(screen.getByText("Appointment Notes")).toBeTruthy();
     expect(screen.getByText("Add Notes")).toBeTruthy();
-    expect(screen.getByText("Message Therapist")).toBeTruthy();
-    expect(screen.getByText("Start Chat")).toBeTruthy();
   });
 
   it("shows pay consultation fee button for completed appointments when fee is unpaid", () => {

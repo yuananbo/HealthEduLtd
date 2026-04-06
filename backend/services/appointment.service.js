@@ -473,7 +473,8 @@ class AppointmentService {
     appointment.sessionNotes.push(sessionNotes._id);
 
     await appointment.save();
-    return appointment;
+
+    return Appointment.findById(appointmentId).populate("sessionNotes");
   }
 
   // Patients and therapist cancel an appointment. This can be possible if a patient wants to cancel an appointment with a therapist only if the appointments is still pending and if its not 48 hours to the appointment date.

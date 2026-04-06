@@ -41,7 +41,8 @@ const availabilitySchema = new mongoose.Schema({
   },
   isActive: {
     type: Boolean,
-    default: false,
+    // When true, patients see this schedule in booking (getActiveAvailability).
+    default: true,
   },
 });
 

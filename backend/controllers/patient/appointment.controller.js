@@ -9,7 +9,10 @@ import {
   appointmentConfirmationTemplate,
   appointmentConfrimationTherapistTemplate,
 } from "../../utils/emailTemplates.js";
-import processPayment, { isMockPayment } from "../../utils/payment.js";
+import processPayment, {
+  isMockPayment,
+  isConsultationPaymentMocked,
+} from "../../utils/payment.js";
 import { sendEmail } from "../../utils/sendGridEmail.js";
 
 // import paymentGateway from "../utils/paymentGateway.js";
@@ -508,38 +511,48 @@ export const initiateConsultationPayment = asyncHandler(async (req, res) => {
     const existingPatient = await Patient.findById(patientId);
 
     let paymentResponse = null;
-    try {
-      paymentResponse = await processPayment({
-        phoneNumber: existingPatient.phoneNumber,
-        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-        amount: paymentDoc.amount,
-        currency: paymentDoc.currency,
-        appointmentId: appointment._id,
-        email: existingPatient.email,
-        req,
-      });
-    } catch (paymentError) {
-      if (isMockPayment()) {
-        paymentDoc.status = "success";
-        await paymentDoc.save();
+    if (isConsultationPaymentMocked()) {
+      paymentDoc.status = "success";
+      await paymentDoc.save();
+      paymentResponse = {
+        status: "success",
+        message: "Consultation fee recorded (mock — no provider call)",
+        meta: { authorization: {} },
+      };
+    } else {
+      try {
+        paymentResponse = await processPayment({
+          phoneNumber: existingPatient.phoneNumber,
+          fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+          amount: paymentDoc.amount,
+          currency: paymentDoc.currency,
+          appointmentId: appointment._id,
+          email: existingPatient.email,
+          req,
+        });
+      } catch (paymentError) {
+        if (isMockPayment()) {
+          paymentDoc.status = "success";
+          await paymentDoc.save();
 
-        paymentResponse = {
-          status: "success",
-          message: "Payment skipped in non-production environment",
-          meta: { authorization: {} },
-        };
-      } else {
-        throw paymentError;
+          paymentResponse = {
+            status: "success",
+            message: "Payment skipped in non-production environment",
+            meta: { authorization: {} },
+          };
+        } else {
+          throw paymentError;
+        }
       }
-    }
 
-    const redirectUrl =
-      paymentResponse?.meta?.authorization?.redirect ||
-      paymentResponse?.data?.meta?.authorization?.redirect;
-    if (!redirectUrl) {
-      if (paymentDoc.status !== "success") {
-        paymentDoc.status = "success";
-        await paymentDoc.save();
+      const redirectUrl =
+        paymentResponse?.meta?.authorization?.redirect ||
+        paymentResponse?.data?.meta?.authorization?.redirect;
+      if (!redirectUrl) {
+        if (paymentDoc.status !== "success") {
+          paymentDoc.status = "success";
+          await paymentDoc.save();
+        }
       }
     }
 
