@@ -48,7 +48,14 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const MAX_SIGNUP_FILE_MB = 25;
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: MAX_SIGNUP_FILE_MB * 1024 * 1024,
+    files: 6,
+  },
+});
 
 const profileUploadsDir = path.join(process.cwd(), "backend", "uploads");
 if (!fs.existsSync(profileUploadsDir)) {

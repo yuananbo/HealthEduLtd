@@ -273,17 +273,33 @@ export const signupTherapist = async (req, res) => {
         user: newTherapist,
       });
     } catch (emailError) {
-      console.log("Email sending failed during therapist signup:", emailError);
+      console.error("Email sending failed during therapist signup:", emailError);
 
-      if (process.env.NODE_ENV !== "production") {
-        return res.status(201).json({
+      // Prefer SKIP_THERAPIST_EMAIL_OTP=true so this path never runs. If mail fails in production,
+      // set THERAPIST_SIGNUP_ALLOW_NO_EMAIL=true (Azure App Settings) to still activate the account.
+      const allowFinishWithoutEmail =
+        process.env.NODE_ENV !== "production" ||
+        process.env.THERAPIST_SIGNUP_ALLOW_NO_EMAIL === "true";
+
+      if (allowFinishWithoutEmail) {
+        await Therapist.updateOne(
+          { _id: newTherapist._id },
+          { $set: { active: true, otp: null, otpExpires: null } }
+        );
+        const reloaded = await Therapist.findById(newTherapist._id);
+        const payload = {
           status: "success",
           message:
-            "Account created, but verification email could not be sent. Use verifyLink for local testing.",
-          user: newTherapist,
-          verifyLink,
-          otp,
-        });
+            process.env.NODE_ENV === "production"
+              ? "Account created. Email could not be sent; you can log in (email verification skipped)."
+              : "Account created, but verification email could not be sent. Use verifyLink for local testing.",
+          user: reloaded,
+        };
+        if (process.env.NODE_ENV !== "production") {
+          payload.verifyLink = verifyLink;
+          payload.otp = otp;
+        }
+        return res.status(201).json(payload);
       }
 
       return res.status(502).json({
