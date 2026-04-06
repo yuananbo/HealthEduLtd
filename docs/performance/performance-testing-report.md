@@ -4,7 +4,7 @@
 This report evaluates system responsiveness for public pages, authenticated dashboard and detail pages, and protected APIs in the HealthEduLtd application. The goal is to show how the system behaves for real user flows, not only anonymous landing pages.
 
 ## Test Environment
-- Date: 2026-03-22T20:07:35.762Z
+- Date: 2026-04-06T02:55:34.137Z
 - Repository branch: feature/performance-testing-report
 - Execution mode: local desktop run
 - Frontend build: `frontend/dist`
@@ -37,9 +37,9 @@ The automated script seeds three dedicated performance-test users and related re
 ## Public Page Lighthouse Results
 | Page | Route | Score | FCP | LCP | Speed Index | TBT | CLS |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Welcome page | `/welcome` | 84 | 1.7 s | 1.7 s | 1.7 s | 0 ms | 0 |
+| Welcome page | `/welcome` | 85 | 1.7 s | 1.7 s | 1.7 s | 0 ms | 0 |
 | Patient login page | `/patient/login` | 81 | 1.8 s | 2.1 s | 1.8 s | 0 ms | 0 |
-| Admin login page | `/admin/login` | 84 | 1.8 s | 1.8 s | 1.8 s | 0 ms | 0 |
+| Admin login page | `/admin/login` | 84 | 1.7 s | 1.7 s | 1.7 s | 0 ms | 0 |
 
 Artifacts:
 - JSON reports: `docs/performance/lighthouse/*.report.json`
@@ -48,14 +48,14 @@ Artifacts:
 ## Authenticated Page Navigation Results
 | Role | Page | Route | DCL (ms) | Load (ms) | Duration (ms) | FCP (ms) | LCP (ms) | CLS |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| patient | Patient dashboard | `/patient/` | 164.50 | 165.00 | 165.00 | 272.00 | 272.00 | 0.0000 |
-| patient | Patient appointment details | `/patient/appointments/69c049073a172dba1f50d3bb` | 80.60 | 80.90 | 80.90 | 172.00 | 272.00 | 0.0224 |
-| patient | Patient monitoring | `/patient/monitoring` | 75.10 | 75.60 | 75.60 | 168.00 | 168.00 | 0.0000 |
-| therapist | Therapist dashboard | `/therapist/` | 78.20 | 78.60 | 78.60 | 196.00 | 196.00 | 0.2311 |
-| therapist | Therapist appointment details | `/therapist/appointments/69c049073a172dba1f50d3bb` | 89.50 | 89.80 | 89.80 | 172.00 | 340.00 | 0.0000 |
-| admin | Admin dashboard | `/admin/` | 114.90 | 115.20 | 115.20 | 204.00 | 204.00 | 0.0038 |
-| admin | Admin users | `/admin/users` | 81.50 | 81.70 | 81.70 | 200.00 | 220.00 | 0.0000 |
-| admin | Admin bookings | `/admin/bookings` | 76.60 | 77.00 | 77.00 | 156.00 | 208.00 | 0.0000 |
+| patient | Patient dashboard | `/patient/` | 71.40 | 71.80 | 71.80 | 140.00 | 488.00 | 0.0000 |
+| patient | Patient appointment details | `/patient/appointments/69c049073a172dba1f50d3bb` | 44.10 | 44.30 | 44.30 | 104.00 | 136.00 | 0.0224 |
+| patient | Patient monitoring | `/patient/monitoring` | 50.20 | 50.30 | 50.30 | 124.00 | 124.00 | 0.0000 |
+| therapist | Therapist dashboard | `/therapist/` | 42.40 | 42.60 | 42.60 | 112.00 | 112.00 | 0.2311 |
+| therapist | Therapist appointment details | `/therapist/appointments/69c049073a172dba1f50d3bb` | 53.80 | 54.10 | 54.10 | 116.00 | 148.00 | 0.0000 |
+| admin | Admin dashboard | `/admin/` | 43.40 | 43.70 | 43.70 | 112.00 | 112.00 | 0.0000 |
+| admin | Admin users | `/admin/users` | 50.10 | 50.30 | 50.30 | 104.00 | 120.00 | 0.0000 |
+| admin | Admin bookings | `/admin/bookings` | 43.40 | 43.60 | 43.60 | 100.00 | 116.00 | 0.0000 |
 
 Artifacts:
 - Browser metrics: `docs/performance/browser/authenticated-page-metrics.json`
@@ -63,27 +63,27 @@ Artifacts:
 ## Load Test Results
 | Scenario | Connections | Avg latency (ms) | P90 (ms) | P99 (ms) | Avg req/s | Total requests | Errors | Timeouts | Non-2xx |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| GET /welcome with 10 connections | 10 | 1.98 | 3 | 10 | 3973.0 | 19862 | 0 | 0 | 0 |
-| GET /welcome with 25 connections | 25 | 4.74 | 5 | 49 | 4735.6 | 23679 | 0 | 0 | 0 |
-| GET /api-docs/ with 10 connections | 10 | 1.59 | 2 | 8 | 4784.4 | 23916 | 0 | 0 | 0 |
-| GET /api-docs/ with 25 connections | 25 | 4.37 | 6 | 48 | 5115.6 | 25572 | 0 | 0 | 0 |
-| GET /api/admin/dashboard/summary with 10 connections | 10 | 14.57 | 21 | 66 | 661.6 | 3308 | 0 | 0 | 0 |
-| GET /api/admin/users with 10 connections | 10 | 11.89 | 16 | 60 | 802.4 | 4012 | 0 | 0 | 0 |
-| GET /api/admin/bookings with 10 connections | 10 | 15.33 | 22 | 65 | 634.4 | 3172 | 0 | 0 | 0 |
-| GET /api/v1/therapist/my-statistics with 10 connections | 10 | 28.30 | 37 | 90 | 348.8 | 1744 | 0 | 0 | 0 |
-| GET /api/v1/therapist/my-statistics with 25 connections | 25 | 68.43 | 112 | 133 | 361.4 | 1807 | 0 | 0 | 0 |
-| GET /api/v1/therapist/appointments with 10 connections | 10 | 23.79 | 29 | 93 | 411.0 | 2055 | 0 | 0 | 0 |
-| GET /api/v1/patient/appointments with 10 connections | 10 | 28.68 | 40 | 93 | 342.0 | 1710 | 0 | 0 | 0 |
-| GET /api/v1/patient/monitoring/checkins with 10 connections | 10 | 12.73 | 17 | 67 | 755.4 | 3777 | 0 | 0 | 0 |
+| GET /welcome with 10 connections | 10 | 0.25 | 1 | 3 | 10791.2 | 53953 | 0 | 0 | 0 |
+| GET /welcome with 25 connections | 25 | 1.52 | 2 | 6 | 11743.2 | 58713 | 0 | 0 | 0 |
+| GET /api-docs/ with 10 connections | 10 | 0.28 | 1 | 3 | 10969.2 | 54839 | 0 | 0 | 0 |
+| GET /api-docs/ with 25 connections | 25 | 1.84 | 3 | 9 | 10647.2 | 53240 | 0 | 0 | 0 |
+| GET /api/admin/dashboard/summary with 10 connections | 10 | 8.24 | 12 | 39 | 1142.8 | 5714 | 0 | 0 | 0 |
+| GET /api/admin/users with 10 connections | 10 | 5.37 | 8 | 15 | 1699.0 | 8495 | 0 | 0 | 0 |
+| GET /api/admin/bookings with 10 connections | 10 | 5.47 | 8 | 13 | 1672.4 | 8362 | 0 | 0 | 0 |
+| GET /api/v1/therapist/my-statistics with 10 connections | 10 | 11.73 | 16 | 25 | 815.8 | 4079 | 0 | 0 | 0 |
+| GET /api/v1/therapist/my-statistics with 25 connections | 25 | 33.07 | 44 | 81 | 742.6 | 3713 | 0 | 0 | 0 |
+| GET /api/v1/therapist/appointments with 10 connections | 10 | 10.74 | 15 | 25 | 889.6 | 4448 | 0 | 0 | 0 |
+| GET /api/v1/patient/appointments with 10 connections | 10 | 13.04 | 18 | 30 | 737.2 | 3686 | 0 | 0 | 0 |
+| GET /api/v1/patient/monitoring/checkins with 10 connections | 10 | 6.91 | 10 | 18 | 1348.4 | 6742 | 0 | 0 | 0 |
 
 Artifacts:
 - JSON load outputs: `docs/performance/load/*.json`
 
 ## Analysis
-- Public Lighthouse scores ranged from 81 to 84, so the tested anonymous pages cleared the local baseline target of 70.
-- Authenticated dashboard and detail pages remained within the local navigation target, with the slowest page finishing in 165.00 ms and the highest authenticated-page LCP measured at 340.00 ms.
+- Public Lighthouse scores ranged from 81 to 85, so the tested anonymous pages cleared the local baseline target of 70.
+- Authenticated dashboard and detail pages remained within the local navigation target, with the slowest page finishing in 71.80 ms and the highest authenticated-page LCP measured at 488.00 ms.
 - Static public routes remained extremely responsive under load, and protected APIs also stayed within the 100 ms average latency target.
-- The slowest average latency across all tested routes was 68.43 ms, while the slowest protected API average latency was 68.43 ms.
+- The slowest average latency across all tested routes was 33.07 ms, while the slowest protected API average latency was 33.07 ms.
 - Admin, therapist, and patient business APIs all returned transport-stable results during the tested load windows, with zero errors and zero timeouts.
 - The authenticated pages in this report cover actual working flows: therapist dashboard and appointment details, patient dashboard and monitoring, and admin dashboard, users, and bookings.
 - Most authenticated pages were responsive, but Therapist dashboard (CLS 0.2311) exceeded the CLS target.
