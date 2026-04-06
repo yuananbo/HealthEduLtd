@@ -1,11 +1,13 @@
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-const apiLocalUrl = "http://localhost:8000/";
-const apiLiveUrl = "https://mobirehab.onrender.com/";
+const defaultOrigin =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:8000";
+const apiBaseOrigin =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || defaultOrigin;
 
 const api = axios.create({
-  baseURL: `${apiLocalUrl}api/v1/`,
+  baseURL: `${apiBaseOrigin}/api/v1/`,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

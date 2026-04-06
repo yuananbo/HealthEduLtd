@@ -1,0 +1,98 @@
+[
+  {
+    "role": "patient",
+    "page": "Patient dashboard",
+    "route": "/patient/",
+    "domContentLoadedMs": 164.5,
+    "loadEventMs": 165,
+    "durationMs": 165,
+    "firstContentfulPaintMs": 272,
+    "largestContentfulPaintMs": 272,
+    "cls": 0,
+    "finalUrl": "/patient/"
+  },
+  {
+    "role": "patient",
+    "page": "Patient appointment details",
+    "route": "/patient/appointments/69c049073a172dba1f50d3bb",
+    "domContentLoadedMs": 80.60000002384186,
+    "loadEventMs": 80.89999997615814,
+    "durationMs": 80.89999997615814,
+    "firstContentfulPaintMs": 172,
+    "largestContentfulPaintMs": 272,
+    "cls": 0.0224,
+    "finalUrl": "/patient/appointments/69c049073a172dba1f50d3bb"
+  },
+  {
+    "role": "patient",
+    "page": "Patient monitoring",
+    "route": "/patient/monitoring",
+    "domContentLoadedMs": 75.09999996423721,
+    "loadEventMs": 75.59999996423721,
+    "durationMs": 75.59999996423721,
+    "firstContentfulPaintMs": 168,
+    "largestContentfulPaintMs": 168,
+    "cls": 0,
+    "finalUrl": "/patient/monitoring"
+  },
+  {
+    "role": "therapist",
+    "page": "Therapist dashboard",
+    "route": "/therapist/",
+    "domContentLoadedMs": 78.19999998807907,
+    "loadEventMs": 78.59999996423721,
+    "durationMs": 78.59999996423721,
+    "firstContentfulPaintMs": 196,
+    "largestContentfulPaintMs": 196,
+    "cls": 0.2311,
+    "finalUrl": "/therapist/"
+  },
+  {
+    "role": "therapist",
+    "page": "Therapist appointment details",
+    "route": "/therapist/appointments/69c049073a172dba1f50d3bb",
+    "domContentLoadedMs": 89.5,
+    "loadEventMs": 89.80000001192093,
+    "durationMs": 89.80000001192093,
+    "firstContentfulPaintMs": 172,
+    "largestContentfulPaintMs": 340,
+    "cls": 0,
+    "finalUrl": "/therapist/appointments/69c049073a172dba1f50d3bb"
+  },
+  {
+    "role": "admin",
+    "page": "Admin dashboard",
+    "route": "/admin/",
+    "domContentLoadedMs": 114.89999997615814,
+    "loadEventMs": 115.19999998807907,
+    "durationMs": 115.19999998807907,
+    "firstContentfulPaintMs": 204,
+    "largestContentfulPaintMs": 204,
+    "cls": 0.0038,
+    "finalUrl": "/admin/"
+  },
+  {
+    "role": "admin",
+    "page": "Admin users",
+    "route": "/admin/users",
+    "domContentLoadedMs": 81.5,
+    "loadEventMs": 81.69999998807907,
+    "durationMs": 81.69999998807907,
+    "firstContentfulPaintMs": 200,
+    "largestContentfulPaintMs": 220,
+    "cls": 0,
+    "finalUrl": "/admin/users"
+  },
+  {
+    "role": "admin",
+    "page": "Admin bookings",
+    "route": "/admin/bookings",
+    "domContentLoadedMs": 76.59999996423721,
+    "loadEventMs": 77,
+    "durationMs": 77,
+    "firstContentfulPaintMs": 156,
+    "largestContentfulPaintMs": 208,
+    "cls": 0,
+    "finalUrl": "/admin/bookings"
+  }
+]
