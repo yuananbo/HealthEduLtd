@@ -947,7 +947,7 @@ export const getTherapistStats = asyncHandler(async (req, res) => {
 
 export const getTherapistAppointments = asyncHandler(async (req, res) => {
   try {
-    const { therapistId } = req.params;
+    const therapistId = req.params.id;
     let { page, limit } = req.query;
 
     // Ensure page and limit are valid numbers

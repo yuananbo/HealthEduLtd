@@ -19,6 +19,26 @@ import moment from "moment";
 import Availability from "../models/availability.model.js";
 
 class AvailabilityService {
+  /**
+   * Calendar-day availability (no timezone drift). Prefer client "YYYY-MM-DD".
+   */
+  static normalizeAvailabilityDayInput(value) {
+    if (value === undefined || value === null) {
+      throw new Error("Availability date is required");
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const m = moment.utc(s, "YYYY-MM-DD", true);
+        if (!m.isValid()) throw new Error("Invalid availability date");
+        return m.startOf("day").toDate();
+      }
+    }
+    const legacy = moment.utc(value);
+    if (!legacy.isValid()) throw new Error("Invalid availability date");
+    return legacy.startOf("day").toDate();
+  }
+
   static async createAvailability(therapistId, dates, availabilityName) {
     const existingAvailabilityName = await Availability.findOne({
       availabilityName: availabilityName,
@@ -31,7 +51,7 @@ class AvailabilityService {
     const availability = new Availability({
       therapist: therapistId,
       availabilities: dates.map((date) => ({
-        date: moment.utc(date.date).startOf("day").toDate(),
+        date: this.normalizeAvailabilityDayInput(date.date),
         times: date.times.map((time) => ({ time, isActive: true })),
       })),
       availabilityName: availabilityName,
@@ -295,7 +315,7 @@ class AvailabilityService {
 
       if (dates) {
         availability.availabilities = dates.map((date) => ({
-          date: moment.utc(date.date).startOf("day").toDate(),
+          date: this.normalizeAvailabilityDayInput(date.date),
           times: date.times.map((time) => ({
             time: time.time,
             isActive: time.isActive,

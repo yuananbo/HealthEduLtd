@@ -26,7 +26,8 @@ const Availabilities = () => {
     setLoading(true);
     try {
       const response = await api.get("/therapist/my-availability");
-      setAvailabilities(response?.data?.data);
+      const payload = response?.data?.data;
+      setAvailabilities(Array.isArray(payload) ? payload : []);
     } catch (err) {
       toast.error(
         "Error fetching availabilities: " + (err.message || "An error occurred")
@@ -81,7 +82,7 @@ const Availabilities = () => {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
-      ) : availabilities.length === 0 ? (
+      ) : !Array.isArray(availabilities) || availabilities.length === 0 ? (
         <p className="text-center text-gray-500 text-xl">
           No availabilities found.
         </p>

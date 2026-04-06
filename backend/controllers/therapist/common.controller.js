@@ -6,21 +6,21 @@ export const getTherapistRatings = async (req, res) => {
 
   try {
     const therapist = await CommonService.getTherapistRatings(therapistId);
-    const averageRating = CommonService.calculateAverageRating(therapist.ratings);
-
-    if (!therapist) {
-      return res.status(404).json({ message: "Therapist not found" });
-    }
-
+    const averageRating = CommonService.calculateAverageRating(
+      therapist.ratings || []
+    );
     res.json({ therapist, averageRating });
   } catch (error) {
     console.error("Error fetching therapist with ratings:", error);
+    if (error?.message === "Therapist not found") {
+      return res.status(404).json({ message: "Therapist not found" });
+    }
     res.status(500).json({ message: "Server error" });
   }
 };
 
 export const addRating = async (req, res) => {
-  const { rating, review, appointmentId } = req.body;
+  const { rating, review, appointmentId, isAnonymous } = req.body;
   const therapistId = req.params.id;
   const patientId = req.user._id;
 
@@ -30,7 +30,8 @@ export const addRating = async (req, res) => {
       therapistId,
       appointmentId,
       rating,
-      review
+      review,
+      Boolean(isAnonymous)
     );
     res.status(201).json({ success: "success", rating: newRating });
   } catch (err) {
