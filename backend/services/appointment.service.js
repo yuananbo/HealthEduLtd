@@ -339,8 +339,8 @@ class AppointmentService {
 
     // Slot reservation is handled during booking; acceptance shouldn't re-lock slots.
 
-    // Only send email for Accepted or Declined statuses
-    if (status === "Accepted" || status === "Declined") {
+    // Only notify patient on Declined; no email when status becomes Accepted (therapist or admin).
+    if (status === "Declined") {
       const baseURL =
         req?.protocol && typeof req?.get === "function"
           ? `${req.protocol}://${req.get("host")}`
