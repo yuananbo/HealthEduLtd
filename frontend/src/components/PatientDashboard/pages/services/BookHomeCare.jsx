@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import api from "../../../../utils/api";
 import Button from "../../../common/Button";
 import { getPaymentRedirectUrl } from "../../../../utils/paymentFlow";
+import { resolveSelectedSlotTime } from "../../../../utils/availabilityDate";
 
 const HOME_CARE_SERVICES = [
   "Physical Therapy",
@@ -122,7 +123,36 @@ const BookHomeCare = () => {
     });
   };
 
+  const assertHomeBookingFormComplete = () => {
+    const slotTime = resolveSelectedSlotTime(selectedTime);
+    const missing = [];
+    if (!selectedDate || !String(selectedDate).trim()) {
+      missing.push("appointment date");
+    }
+    if (!slotTime) {
+      missing.push("time slot");
+    }
+    if (!formData.service?.trim()) {
+      missing.push("service");
+    }
+    if (!formData.purpose?.trim()) {
+      missing.push("purpose");
+    }
+    if (
+      appointmentType === "home-care" &&
+      (!homeAddress.country?.trim() || !homeAddress.city?.trim())
+    ) {
+      missing.push("home address (country and city)");
+    }
+    if (missing.length) {
+      toast.error(`Please complete: ${missing.join(", ")}.`);
+      return false;
+    }
+    return true;
+  };
+
   const bookHomeCareAppointment = async () => {
+    const slotTime = resolveSelectedSlotTime(selectedTime);
     try {
       setLoad(true);
       const response = await api.post(
@@ -130,7 +160,7 @@ const BookHomeCare = () => {
         {
           therapist: therapist.id,
           date: moment(selectedDate).format("YYYY-MM-DD"),
-          time: selectedTime?.time,
+          time: slotTime,
           service: formData.service,
           purpose: formData.purpose,
           notes: formData.notes,
@@ -171,22 +201,8 @@ const BookHomeCare = () => {
   };
 
   const addToCalendar = async () => {
-    if (
-      !selectedDate ||
-      !selectedTime ||
-      !formData.service ||
-      !formData.purpose
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    if (appointmentType === "home-care" && (!homeAddress.country || !homeAddress.city)) {
-      toast.error(
-        "Please provide at least your country and city for the home address"
-      );
-      return;
-    }
+    if (!assertHomeBookingFormComplete()) return;
+    const slotTime = resolveSelectedSlotTime(selectedTime);
 
     try {
       setLoad(true);
@@ -195,7 +211,7 @@ const BookHomeCare = () => {
         {
           therapist: therapist.id,
           date: moment(selectedDate).format("YYYY-MM-DD"),
-          time: selectedTime?.time,
+          time: slotTime,
           service: formData.service,
           purpose: formData.purpose,
           notes: formData.notes,
@@ -231,24 +247,7 @@ const BookHomeCare = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (
-      !selectedDate ||
-      !selectedTime ||
-      !formData.service ||
-      !formData.purpose
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    if (appointmentType === "home-care" && (!homeAddress.country || !homeAddress.city)) {
-      toast.error(
-        "Please provide at least your country and city for the home address"
-      );
-      return;
-    }
-
+    if (!assertHomeBookingFormComplete()) return;
     await bookHomeCareAppointment();
   };
 

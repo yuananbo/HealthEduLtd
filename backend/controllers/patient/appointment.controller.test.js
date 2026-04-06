@@ -52,7 +52,7 @@ const appointmentModelMocks = vi.hoisted(() => {
     this._id = "507f1f77bcf86cd799439099";
     this.date = data.date ? new Date(data.date) : new Date("2026-03-10");
     this.time = data.time ?? "10:00";
-    this.status = data.status ?? "Pending";
+    this.status = data.status ?? "Waiting for Payment";
     this.service = data.service ?? "PT";
     this.purpose = data.purpose ?? "checkup";
     this.notes = data.notes ?? "";
@@ -86,6 +86,8 @@ const isMockPaymentMock = vi.fn(() => true);
 vi.mock("../../utils/payment.js", () => ({
   default: (...args) => processPaymentMock(...args),
   isMockPayment: () => isMockPaymentMock(),
+  isConsultationPaymentMocked: () => true,
+  isRegistrationPaymentMocked: () => true,
 }));
 
 import { sendEmail } from "../../utils/sendGridEmail.js";
@@ -270,7 +272,7 @@ describe("createAppointment", () => {
     expect(payload.appointment.status).toBe("Waiting for Payment");
   });
 
-  it("returns 201 with paymentDetails: calls processPayment and returns paymentResponse", async () => {
+  it("returns 201 with paymentDetails: mocks registration pay (no processPayment) and returns paymentResponse", async () => {
     const req = {
       ...baseReq(),
       body: {
@@ -286,10 +288,11 @@ describe("createAppointment", () => {
     await createAppointment(req, res, vi.fn());
 
     expect(paymentSaveMock).toHaveBeenCalled();
-    expect(processPaymentMock).toHaveBeenCalled();
+    expect(processPaymentMock).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(201);
     const payload = res.json.mock.calls[0][0];
-    expect(payload.paymentResponse).toBeDefined();
+    expect(payload.paymentResponse?.status).toBe("success");
+    expect(appointmentServiceMocks.updateStatusWithHistory).toHaveBeenCalled();
   });
 });
 

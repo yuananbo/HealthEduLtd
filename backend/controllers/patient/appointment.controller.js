@@ -12,6 +12,7 @@ import {
 import processPayment, {
   isMockPayment,
   isConsultationPaymentMocked,
+  isRegistrationPaymentMocked,
 } from "../../utils/payment.js";
 import { sendEmail } from "../../utils/sendGridEmail.js";
 
@@ -222,53 +223,14 @@ export const createAppointment = asyncHandler(async (req, res) => {
 
       await newPayment.save();
 
-      try {
-        paymentResponse = await processPayment({
-          phoneNumber: existingPatient.phoneNumber,
-          fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-          amount: paymentDetails.amount,
-          currency: paymentDetails.currency,
-          appointmentId: savedAppointment._id,
-          email: existingPatient.email,
-          req: req,
-        });
-      } catch (paymentError) {
-        if (isMockPayment()) {
-          newPayment.status = "success";
-          await newPayment.save();
-
-          await AppointmentService.updateStatusWithHistory(savedAppointment, {
-            status: "Pending",
-            actor: {
-              userId: patientId,
-              userType: "patient",
-              name:
-                `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
-                existingPatient.email ||
-                "Patient",
-            },
-            source: "payment-confirmed",
-            reason: "Payment confirmed in non-production environment",
-          });
-
-          paymentResponse = {
-            status: "success",
-            message: "Payment skipped in non-production environment",
-            meta: { authorization: {} },
-          };
-        } else {
-          throw paymentError;
-        }
-      }
-
-      const redirectUrl =
-        paymentResponse?.meta?.authorization?.redirect ||
-        paymentResponse?.data?.meta?.authorization?.redirect;
-      if (!redirectUrl) {
-        if (newPayment.status !== "success") {
-          newPayment.status = "success";
-          await newPayment.save();
-        }
+      if (isRegistrationPaymentMocked()) {
+        newPayment.status = "success";
+        await newPayment.save();
+        paymentResponse = {
+          status: "success",
+          message: "Booking payment recorded (mock — no provider call)",
+          meta: { authorization: {} },
+        };
         if (savedAppointment.status === "Waiting for Payment") {
           await AppointmentService.updateStatusWithHistory(savedAppointment, {
             status: "Pending",
@@ -281,8 +243,72 @@ export const createAppointment = asyncHandler(async (req, res) => {
                 "Patient",
             },
             source: "payment-confirmed",
-            reason: "Payment marked successful without redirect flow",
+            reason: "Registration payment recorded without payment provider",
           });
+        }
+      } else {
+        try {
+          paymentResponse = await processPayment({
+            phoneNumber: existingPatient.phoneNumber,
+            fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+            amount: paymentDetails.amount,
+            currency: paymentDetails.currency,
+            appointmentId: savedAppointment._id,
+            email: existingPatient.email,
+            req: req,
+          });
+        } catch (paymentError) {
+          if (isMockPayment()) {
+            newPayment.status = "success";
+            await newPayment.save();
+
+            await AppointmentService.updateStatusWithHistory(savedAppointment, {
+              status: "Pending",
+              actor: {
+                userId: patientId,
+                userType: "patient",
+                name:
+                  `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                  existingPatient.email ||
+                  "Patient",
+              },
+              source: "payment-confirmed",
+              reason: "Payment confirmed in non-production environment",
+            });
+
+            paymentResponse = {
+              status: "success",
+              message: "Payment skipped in non-production environment",
+              meta: { authorization: {} },
+            };
+          } else {
+            throw paymentError;
+          }
+        }
+
+        const redirectUrl =
+          paymentResponse?.meta?.authorization?.redirect ||
+          paymentResponse?.data?.meta?.authorization?.redirect;
+        if (!redirectUrl) {
+          if (newPayment.status !== "success") {
+            newPayment.status = "success";
+            await newPayment.save();
+          }
+          if (savedAppointment.status === "Waiting for Payment") {
+            await AppointmentService.updateStatusWithHistory(savedAppointment, {
+              status: "Pending",
+              actor: {
+                userId: patientId,
+                userType: "patient",
+                name:
+                  `${existingPatient.firstName || ""} ${existingPatient.lastName || ""}`.trim() ||
+                  existingPatient.email ||
+                  "Patient",
+              },
+              source: "payment-confirmed",
+              reason: "Payment marked successful without redirect flow",
+            });
+          }
         }
       }
     }
@@ -330,8 +356,16 @@ export const createAppointment = asyncHandler(async (req, res) => {
       }),
     };
 
-    const patientEmailResponse = await sendEmail(patientEmailData);
-    const therapistEmailResponse = await sendEmail(therapistEmailData);
+    let patientEmailResponse = null;
+    let therapistEmailResponse = null;
+    try {
+      patientEmailResponse = await sendEmail(patientEmailData);
+      therapistEmailResponse = await sendEmail(therapistEmailData);
+    } catch (emailErr) {
+      console.error("Booking confirmation email failed:", emailErr?.message || emailErr);
+      patientEmailResponse = { skipped: true, error: emailErr?.message };
+      therapistEmailResponse = { skipped: true, error: emailErr?.message };
+    }
 
     res.status(201).json({
       appointment: savedAppointment,
@@ -395,53 +429,89 @@ export const initiateAppointmentPayment = asyncHandler(async (req, res) => {
     const existingPatient = await Patient.findById(patientId);
 
     let paymentResponse = null;
-    try {
-      paymentResponse = await processPayment({
-        phoneNumber: existingPatient.phoneNumber,
-        fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
-        amount: paymentDoc.amount,
-        currency: paymentDoc.currency,
-        appointmentId: appointment._id,
-        email: existingPatient.email,
-        req,
-      });
-    } catch (paymentError) {
-      if (isMockPayment()) {
-        paymentDoc.status = "success";
-        await paymentDoc.save();
-
-        await AppointmentService.updateStatusWithHistory(appointment, {
-          status: "Pending",
-          actor: { userId: patientId, userType: "patient", name: `${existingPatient.firstName} ${existingPatient.lastName}`.trim() || "Patient" },
-          source: "payment-confirmed",
-          reason: "Payment confirmed in non-production environment",
-        });
-
-        paymentResponse = {
-          status: "success",
-          message: "Payment skipped in non-production environment",
-          meta: { authorization: {} },
-        };
-      } else {
-        throw paymentError;
-      }
-    }
-
-    const redirectUrl =
-      paymentResponse?.meta?.authorization?.redirect ||
-      paymentResponse?.data?.meta?.authorization?.redirect;
-    if (!redirectUrl) {
-      if (paymentDoc.status !== "success") {
-        paymentDoc.status = "success";
-        await paymentDoc.save();
-      }
+    if (isRegistrationPaymentMocked()) {
+      paymentDoc.status = "success";
+      await paymentDoc.save();
+      paymentResponse = {
+        status: "success",
+        message: "Booking payment recorded (mock — no provider call)",
+        meta: { authorization: {} },
+      };
       if (appointment.status === "Waiting for Payment") {
         await AppointmentService.updateStatusWithHistory(appointment, {
           status: "Pending",
-          actor: { userId: patientId, userType: "patient", name: `${existingPatient.firstName} ${existingPatient.lastName}`.trim() || "Patient" },
+          actor: {
+            userId: patientId,
+            userType: "patient",
+            name:
+              `${existingPatient.firstName} ${existingPatient.lastName}`.trim() ||
+              "Patient",
+          },
           source: "payment-confirmed",
-          reason: "Payment marked successful without redirect flow",
+          reason: "Registration payment recorded without payment provider",
         });
+      }
+    } else {
+      try {
+        paymentResponse = await processPayment({
+          phoneNumber: existingPatient.phoneNumber,
+          fullName: `${existingPatient.firstName} ${existingPatient.lastName}`,
+          amount: paymentDoc.amount,
+          currency: paymentDoc.currency,
+          appointmentId: appointment._id,
+          email: existingPatient.email,
+          req,
+        });
+      } catch (paymentError) {
+        if (isMockPayment()) {
+          paymentDoc.status = "success";
+          await paymentDoc.save();
+
+          await AppointmentService.updateStatusWithHistory(appointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName} ${existingPatient.lastName}`.trim() ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment confirmed in non-production environment",
+          });
+
+          paymentResponse = {
+            status: "success",
+            message: "Payment skipped in non-production environment",
+            meta: { authorization: {} },
+          };
+        } else {
+          throw paymentError;
+        }
+      }
+
+      const redirectUrl =
+        paymentResponse?.meta?.authorization?.redirect ||
+        paymentResponse?.data?.meta?.authorization?.redirect;
+      if (!redirectUrl) {
+        if (paymentDoc.status !== "success") {
+          paymentDoc.status = "success";
+          await paymentDoc.save();
+        }
+        if (appointment.status === "Waiting for Payment") {
+          await AppointmentService.updateStatusWithHistory(appointment, {
+            status: "Pending",
+            actor: {
+              userId: patientId,
+              userType: "patient",
+              name:
+                `${existingPatient.firstName} ${existingPatient.lastName}`.trim() ||
+                "Patient",
+            },
+            source: "payment-confirmed",
+            reason: "Payment marked successful without redirect flow",
+          });
+        }
       }
     }
 

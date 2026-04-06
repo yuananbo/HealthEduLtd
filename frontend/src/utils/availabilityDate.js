@@ -36,3 +36,12 @@ export function ymdToLocalDate(ymd) {
   if (!y || !m || !d) return null;
   return new Date(y, m - 1, d);
 }
+
+/**
+ * Normalize slot from TimeSlots (string or { time }) for API `time` field.
+ */
+export function resolveSelectedSlotTime(slot) {
+  if (slot == null) return "";
+  if (typeof slot === "string") return String(slot).trim();
+  return String(slot.time ?? "").trim();
+}

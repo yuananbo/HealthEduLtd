@@ -61,6 +61,9 @@ const paymentUtilMocks = vi.hoisted(() => ({
 vi.mock("../../utils/payment.js", () => ({
   default: (...args) => paymentUtilMocks.processPayment(...args),
   isMockPayment: () => paymentUtilMocks.isMockPayment(),
+  isConsultationPaymentMocked: () => true,
+  /** Tests cover real processPayment path; production default mocks registration pay. */
+  isRegistrationPaymentMocked: () => false,
 }));
 
 import Patient from "../../models/patient.model.js";

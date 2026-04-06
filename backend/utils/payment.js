@@ -29,14 +29,13 @@ export function isMockPayment() {
 }
 
 /**
- * Post-visit consultation fee is mocked by default so it still works when
- * USE_REAL_PAYMENT=true (booking) or NODE_ENV=production without a working FLW flow.
- * Set MOCK_CONSULTATION_PAYMENT=false and configure FLW to charge consultation for real.
+ * @param {"MOCK_CONSULTATION_PAYMENT" | "MOCK_REGISTRATION_PAYMENT"} envKey
+ * Default: mock (no Flutterwave). Set env to "false" + FLW keys to use real checkout in production.
  */
-export function isConsultationPaymentMocked() {
-  if (process.env.MOCK_CONSULTATION_PAYMENT === "true") return true;
-
-  if (process.env.MOCK_CONSULTATION_PAYMENT === "false") {
+function isProviderPaymentMocked(envKey) {
+  const v = process.env[envKey];
+  if (v === "true") return true;
+  if (v === "false") {
     const flwConfigured = Boolean(
       String(process.env.FLW_PUBLIC_KEY || "").trim() &&
         String(process.env.FLW_SECRET_KEY || "").trim()
@@ -44,8 +43,21 @@ export function isConsultationPaymentMocked() {
     if (!flwConfigured) return true;
     return isMockPayment();
   }
-
   return true;
+}
+
+/**
+ * Post-visit consultation fee — see isProviderPaymentMocked.
+ */
+export function isConsultationPaymentMocked() {
+  return isProviderPaymentMocked("MOCK_CONSULTATION_PAYMENT");
+}
+
+/**
+ * Booking / registration fee at appointment create — same default (mock) so deploy works without FLW redirect.
+ */
+export function isRegistrationPaymentMocked() {
+  return isProviderPaymentMocked("MOCK_REGISTRATION_PAYMENT");
 }
 
 // Initialize Flutterwave with fallback for missing keys

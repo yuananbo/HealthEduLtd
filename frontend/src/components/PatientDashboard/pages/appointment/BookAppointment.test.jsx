@@ -157,7 +157,7 @@ describe("BookAppointment", () => {
     await user.click(screen.getByRole("button", { name: /Book & Pay Now/i }));
 
     expect(toast.error).toHaveBeenCalledWith(
-      "Please fill in all required fields"
+      "Please complete: appointment date, time slot."
     );
     expect(postMock).not.toHaveBeenCalled();
   });

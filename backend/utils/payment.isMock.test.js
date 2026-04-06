@@ -6,11 +6,16 @@ import { describe, it, expect, afterEach, beforeAll, vi } from "vitest";
 describe("isMockPayment", () => {
   let isMockPayment;
   let isConsultationPaymentMocked;
+  let isRegistrationPaymentMocked;
 
   beforeAll(async () => {
     vi.stubEnv("FLW_PUBLIC_KEY", "FLWPUBK_TEST-fake-for-vitest");
     vi.stubEnv("FLW_SECRET_KEY", "FLWSECK_TEST-fake-for-vitest");
-    ({ isMockPayment, isConsultationPaymentMocked } = await import("./payment.js"));
+    ({
+      isMockPayment,
+      isConsultationPaymentMocked,
+      isRegistrationPaymentMocked,
+    } = await import("./payment.js"));
   });
 
   afterEach(() => {
@@ -78,5 +83,12 @@ describe("isMockPayment", () => {
     vi.stubEnv("FLW_PUBLIC_KEY", "");
     vi.stubEnv("FLW_SECRET_KEY", "");
     expect(isConsultationPaymentMocked()).toBe(true);
+  });
+
+  it("isRegistrationPaymentMocked matches consultation defaults (unset => true in production)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FLW_PUBLIC_KEY", "FLWPUBK_TEST-fake-for-vitest");
+    vi.stubEnv("FLW_SECRET_KEY", "FLWSECK_TEST-fake-for-vitest");
+    expect(isRegistrationPaymentMocked()).toBe(true);
   });
 });
