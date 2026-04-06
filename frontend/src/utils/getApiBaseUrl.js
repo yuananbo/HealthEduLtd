@@ -11,8 +11,11 @@ const deriveAzureBackendUrl = () => {
     return `${protocol}//${hostname}:8000`;
   }
 
+  // Same Azure Web App serves API + static build — use this origin (HTTPS).
+  // Do not return ""; it is falsy and would fall through to http://localhost:8000
+  // (mixed content: Safari/Chrome block HTTPS pages from calling http://localhost).
   if (hostname.endsWith(".azurewebsites.net")) {
-    return "";
+    return `${protocol}//${hostname}`;
   }
 
   return null;

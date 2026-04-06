@@ -12,6 +12,7 @@ import DailyCheckIn from "../../models/dailyCheckIn.model.js";
 import mongoose from "mongoose";
 import fs from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { cloudinary } from "../../utils/cloudinary.js";
 
 const localProfileFilenameFromUrl = (profilePictureUrl) => {
@@ -53,16 +54,37 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 
+const parseAddressFromBody = (raw) => {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const signupTherapist = async (req, res) => {
   try {
-    const isDevelopment = process.env.NODE_ENV === "development";
+    // Email OTP + verify link only in production. Local/staging: skip (or set SKIP_THERAPIST_EMAIL_OTP=true explicitly).
+    const skipTherapistEmailOtp =
+      process.env.SKIP_THERAPIST_EMAIL_OTP === "true" ||
+      process.env.NODE_ENV !== "production";
+    const autoVerifyInDev =
+      process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
     const {
       firstName,
       lastName,
       email,
       phoneNumber,
       gender,
-      address,
       profession,
       bio,
       licenseNumber,
@@ -70,7 +92,13 @@ export const signupTherapist = async (req, res) => {
       specialization,
       password,
       confirmPassword,
+      alternativePhoneNumber,
     } = req.body;
+
+    const address = parseAddressFromBody(req.body.address);
+    if (!address) {
+      return res.status(400).json({ message: "Valid address is required" });
+    }
 
     // Check if email or phone number is already in use
     const therapistByEmail = await Therapist.findOne({ email });
@@ -91,6 +119,13 @@ export const signupTherapist = async (req, res) => {
     // Hash the password
     // const salt = await bcrypt.genSalt(10);
     // const hashedPassword = await bcrypt.hash(password, salt);
+
+    if (!req.files) {
+      return res.status(400).json({
+        message:
+          "Invalid request: send multipart/form-data with profilePicture, cv, and licenseDocument files",
+      });
+    }
 
     // Check for required files
     const profilePicture = req.files.profilePicture
@@ -117,7 +152,59 @@ export const signupTherapist = async (req, res) => {
       },
     ];
 
-    const uploadResults = await uploadFilesToCloudinary(files);
+    let profilePictureUrl;
+    let cvUrl;
+    let licenseUrl;
+    let cloudinaryIdForProfile;
+
+    try {
+      const uploadResults = await uploadFilesToCloudinary(files);
+      profilePictureUrl = uploadResults[0].secure_url;
+      cloudinaryIdForProfile = uploadResults[0].public_id;
+      cvUrl = uploadResults[1].secure_url;
+      licenseUrl = uploadResults[2].secure_url;
+    } catch (uploadErr) {
+      console.error("Therapist signup upload error:", uploadErr.message || uploadErr);
+      const cloudinaryConfigured = Boolean(
+        process.env.CLOUD_NAME &&
+          (process.env.CLOUD_API_KEY || process.env.CLOUDINARY_API_KEY) &&
+          (process.env.CLOUD_API_SECRET || process.env.CLOUDINARY_API_SECRET)
+      );
+      // Local / staging / missing Cloudinary: store under backend/uploads (503 only when production + Cloudinary expected but failed)
+      const allowLocalUploadFallback =
+        process.env.ALLOW_LOCAL_SIGNUP_UPLOADS === "true" ||
+        process.env.NODE_ENV !== "production" ||
+        !cloudinaryConfigured;
+      if (!allowLocalUploadFallback) {
+        return res.status(503).json({
+          message:
+            "Could not upload documents. Set CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET in backend/.env, or try again later.",
+        });
+      }
+      const uploadRoot = path.join(
+        path.resolve(),
+        "backend",
+        "uploads",
+        "therapist-signup"
+      );
+      await fs.mkdir(uploadRoot, { recursive: true });
+      const host = req.get("host") || "localhost:8000";
+      const proto = req.protocol || "http";
+      const base = `${proto}://${host}`;
+
+      const copyOne = async (fileMeta) => {
+        const ext = path.extname(fileMeta.filePath) || ".bin";
+        const name = `${randomUUID()}${ext}`;
+        const dest = path.join(uploadRoot, name);
+        await fs.copyFile(fileMeta.filePath, dest);
+        return `${base}/uploads/therapist-signup/${encodeURIComponent(name)}`;
+      };
+
+      profilePictureUrl = await copyOne(files[0]);
+      cvUrl = await copyOne(files[1]);
+      licenseUrl = await copyOne(files[2]);
+      cloudinaryIdForProfile = undefined;
+    }
 
     // Create new therapist
     const newTherapist = await Therapist.create({
@@ -125,6 +212,10 @@ export const signupTherapist = async (req, res) => {
       lastName,
       email,
       phoneNumber,
+      alternativePhoneNumber:
+        alternativePhoneNumber && String(alternativePhoneNumber).trim()
+          ? String(alternativePhoneNumber).trim()
+          : undefined,
       gender,
       address,
       profession,
@@ -133,25 +224,28 @@ export const signupTherapist = async (req, res) => {
       numOfYearsOfExperience,
       specialization,
       password,
-      profilePicture: uploadResults[0].secure_url,
-      cloudinaryId: uploadResults[0].public_id,
-      cv: uploadResults[1].secure_url,
-      licenseDocument: uploadResults[2].secure_url,
-      active: isDevelopment ? true : false,
-      isVerified: isDevelopment ? true : false,
+      profilePicture: profilePictureUrl,
+      cloudinaryId: cloudinaryIdForProfile,
+      cv: cvUrl,
+      licenseDocument: licenseUrl,
+      active: skipTherapistEmailOtp ? true : false,
+      isVerified:
+        skipTherapistEmailOtp && autoVerifyInDev ? true : false,
       otp: null,
       otpExpires: null,
     });
 
-    if (isDevelopment) {
+    if (skipTherapistEmailOtp) {
       return res.status(201).json({
         status: "success",
-        message: "Account created (development mode: auto-verified).",
+        message: autoVerifyInDev
+          ? "Account created (email OTP skipped; dev auto-verified)."
+          : "Account created (email OTP skipped). You can log in; admin may still need to approve your profile.",
         user: newTherapist,
       });
     }
 
-    // Generate OTP
+    // Generate OTP (production only)
     const otp = await newTherapist.createOTP();
     await newTherapist.save({ validateBeforeSave: false });
 
@@ -199,8 +293,20 @@ export const signupTherapist = async (req, res) => {
       });
     }
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error(error);
+    if (error.name === "ValidationError") {
+      const parts = Object.values(error.errors || {}).map((e) => e.message);
+      return res.status(400).json({
+        message: "Validation failed",
+        error: parts.join(" ") || error.message,
+      });
+    }
+    res.status(500).json({
+      message: "Internal server error",
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
+    });
   }
 };
 

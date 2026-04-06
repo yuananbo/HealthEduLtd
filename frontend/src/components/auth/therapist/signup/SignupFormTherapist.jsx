@@ -5,6 +5,36 @@ import ProgressBar from "../../../utilities/ProgressBar";
 import RequiredFiles from "./RequiredFiles.";
 import api from "../../../../utils/api";
 
+/** Multer expects real multipart + file fields profilePicture, cv, licenseDocument */
+function buildTherapistSignupFormData(data) {
+  const fd = new FormData();
+  const textFields = [
+    "firstName",
+    "lastName",
+    "email",
+    "phoneNumber",
+    "gender",
+    "profession",
+    "bio",
+    "numOfYearsOfExperience",
+    "specialization",
+    "licenseNumber",
+    "password",
+    "confirmPassword",
+  ];
+  textFields.forEach((key) => {
+    fd.append(key, data[key] ?? "");
+  });
+  if (data.alternativePhoneNumber?.toString().trim()) {
+    fd.append("alternativePhoneNumber", data.alternativePhoneNumber);
+  }
+  fd.append("address", JSON.stringify(data.address ?? {}));
+  fd.append("profilePicture", data.profilePicture);
+  fd.append("cv", data.cv);
+  fd.append("licenseDocument", data.licenseDocument);
+  return fd;
+}
+
 const SignupFormTherapist = ({ API_ENDPOINT }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -94,31 +124,23 @@ const SignupFormTherapist = ({ API_ENDPOINT }) => {
   const registerTherapist = async () => {
     try {
       setLoading(true);
-      // const response = await signup(formData, API_ENDPOINT);
-      const response = await api.post(API_ENDPOINT, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const payload = buildTherapistSignupFormData(formData);
+      const response = await api.post(API_ENDPOINT, payload);
       console.log("Registration successful:", response);
       const verifyLink = response?.data?.verifyLink;
       if (verifyLink) {
-        alert(
-          `Account created, but email failed to send.\nUse this verification link:\n${verifyLink}`
-        );
-      } else {
-        alert(
-          "Account created successfully. Please check your email for verification."
-        );
+        console.info("Therapist signup verify link (optional):", verifyLink);
       }
+      alert("Registration successful.");
       setCurrentStep(steps.length + 1);
     } catch (error) {
       console.error("Registration failed:", error);
+      const d = error?.response?.data;
       const apiMessage =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        error.message;
-      alert(`Registration failed: ${apiMessage}`);
+        [d?.message, d?.error].filter(Boolean).join("\n\n") ||
+        error.message ||
+        "Unknown error";
+      alert(`Registration failed:\n\n${apiMessage}`);
     } finally {
       setLoading(false);
     }
@@ -210,10 +232,10 @@ const SignupFormTherapist = ({ API_ENDPOINT }) => {
       ) : (
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Account Created Successfully
+            Registration successful
           </h2>
           <p className="mt-4 text-gray-600">
-            Please check your email for the verification link.
+            You can go to the login page and sign in with your account.
           </p>
         </div>
       )}

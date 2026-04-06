@@ -153,6 +153,14 @@ const PersonalInfo = ({ formData, handleChange }) => {
       </div>
 
       <div className="flex flex-wrap -mx-3 mb-0 lg:mb-4">
+        <div className="w-full px-3 mb-2">
+          <p className="text-xs text-gray-600">
+            Password rules: at least <strong>10 characters</strong>,{" "}
+            <strong>2 digits</strong>, 1 uppercase, 1 lowercase, and 1 symbol
+            (e.g. <code className="bg-gray-100 px-1 rounded">Test12!abcd</code>
+            ).
+          </p>
+        </div>
         <div className="w-full md:w-1/2 px-3 mb-4 md:mb-0">
           <Input
             handleChange={handleChange}

@@ -14,15 +14,17 @@ schema
   .symbols();
 
 export const checkPasswordStrength = (req, res, next) => {
-  if (schema.validate(req.body.password)) {
+  const pwd = req.body?.password;
+  if (pwd == null || String(pwd).length === 0) {
+    return res.status(400).json({ message: "Password is required" });
+  }
+  if (schema.validate(pwd)) {
     next();
   } else {
-    res
-      .status(400)
-      .json({
-        message: "Password does not meet strength requirements",
-        error:
-          "Password must be at least 10 characters long and contain at least 2 digits, 1 uppercase letter, 1 lowercase letter, and 1 symbol",
-      });
+    res.status(400).json({
+      message: "Password does not meet strength requirements",
+      error:
+        "Password must be at least 10 characters with 2 digits, 1 uppercase, 1 lowercase, and 1 symbol (e.g. Test12!abcd).",
+    });
   }
 };

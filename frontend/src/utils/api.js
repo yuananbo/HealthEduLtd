@@ -27,6 +27,10 @@ const isPublicAuthPath = (url = "") =>
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    // Default axios header is application/json; that breaks FormData (multipart needs boundary).
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     const url = config.url || "";
     if (isPublicAuthPath(url)) {
       return config;
