@@ -1,0 +1,69 @@
+# Sprint 4 Marking Scheme
+
+**Team Name:** 111 
+Amy Zhao
+Anbo Yuan
+Yixi Li
+Jiaqi Huang
+Ruoxin Lei
+---
+
+## Version Control (max 5 marks)
+Branching/PR use is good, but branch naming is not fully consistent.
+Strong names exist like feature/... and fix/..., but names such as develop2.0, develop3.0, develop4.0, yuananbo-canary-test, and temp/... are less clear and less meaningful.
+
+Version Control Total Mark: 4 / 5
+---
+## Code Quality (max 6 marks)
+some controllers use asyncHandler, others use raw try/catch repeatedly, so the style is mixed
+response formats are inconsistent, for example some return status: "success", others return success: true, others return only message or mixed payload shapes
+there are still some misleading or stale comments/messages
+some files are doing quite a lot inside one controller, which hurts reusability and makes modification riskier over time, especially the larger backend controllers handling validation, file logic, auth logic, and response shaping together
+Code Quality Total Mark: 4 / 6
+---
+## UI Design and Ease of Use (8 marks):
+UI Design and Ease of Use Total Mark: 8 / 8
+
+---
+## BackLog Management (10 pts)
+
+Backlog Management Total Mark: 10 / 10
+
+---
+## Project Tracking (max 10 marks)
+Progress was not smoothly tracked through most of the sprint (long plateau followed by a sharp late drop)
+Reflection itself says the team was above the ideal line for much of the sprint
+Project Tracking Total Mark: 6 / 10
+---
+
+## Planning Meetings (RPM.md, sprint3.md) (max 5 marks)
+Planning Meetings Total Mark: 5 / 5
+
+---
+
+## Unit Testing (max 8 marks) 
+Unit Testing Total Mark: 8 / 8
+
+
+ ## Integration Testing (max 12 marks) 
+evidence is distributed across documents instead of one clean reusable integration test spec
+steps/preconditions/expected results are not consistently documented for every flow
+one authenticated performance target still fails: therapist dashboard CLS exceeds the target
+
+
+ Integration Testing Total Mark: 9 / 12 
+
+---
+
+## Team Communication (max 5 marks)
+Team Communication Mark: 5 / 5
+
+---
+## Sprint Demo (Max 17 marks) 
+
+Your Mark: 17 / 17
+
+---
+
+## Total Mark
+76 / 86
